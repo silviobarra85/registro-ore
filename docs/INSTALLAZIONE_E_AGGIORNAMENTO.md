@@ -1,14 +1,14 @@
-# Installazione e aggiornamento — Registro Ore 3.10.2
+# Installazione e aggiornamento — Registro Ore 3.10.3
 
 ## Scelta del pacchetto
 
 **Prima installazione:**
-- macOS: `installers/macos/RegistroOre_3_10_2_MAC_VERGINE.zip`
-- Windows 10/11 x64: `installers/windows/RegistroOre_3_10_2_Windows_x64.zip`
-- Linux Mint x64: `installers/linux/RegistroOre_3_10_2_LinuxMint_amd64.deb`
+- macOS: `installers/macos/RegistroOre_3_10_3_MAC_VERGINE.zip`
+- Windows 10/11 x64: `installers/windows/RegistroOre_3_10_3_Windows_x64.zip`
+- Linux Mint x64: `installers/linux/RegistroOre_3_10_3_LinuxMint_amd64.deb`
 
 **Installazione esistente:**
-- macOS: `installers/macos/RegistroOre_3_10_2_MAC_AGGIORNAMENTO.zip` (doppio clic sul file `.command` dopo l'estrazione).
+- macOS: `installers/macos/RegistroOre_3_10_3_MAC_AGGIORNAMENTO.zip` (doppio clic sul file `.command` dopo l'estrazione).
 - Windows: conservare una copia del database prima di sostituire l'eseguibile.
 - Linux Mint: installare il nuovo `.deb` tramite il gestore pacchetti; il database personale rimane sotto la home.
 
@@ -17,13 +17,13 @@
 Il file `installers/SHA256SUMS.txt` contiene l'impronta SHA-256 di ogni installer. Su Mac/Linux, dalla radice del repository:
 
 ```bash
-shasum -a 256 installers/macos/RegistroOre_3_10_2_MAC_VERGINE.zip
+shasum -a 256 installers/macos/RegistroOre_3_10_3_MAC_VERGINE.zip
 ```
 
 Confrontare l'hash stampato con la voce corrispondente in `installers/SHA256SUMS.txt`. Su Windows usare PowerShell:
 
 ```powershell
-Get-FileHash .\installers\windows\RegistroOre_3_10_2_Windows_x64.zip -Algorithm SHA256
+Get-FileHash .\installers\windows\RegistroOre_3_10_3_Windows_x64.zip -Algorithm SHA256
 ```
 
 ## Prima di aggiornare un database esistente

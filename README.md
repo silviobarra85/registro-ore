@@ -1,10 +1,10 @@
-# Registro Ore · v3.10.2
+# Registro Ore · v3.10.3
 
 <p align="center"><img src="assets/registro-ore-icon.png" alt="Icona Registro Ore" width="128"></p>
 
 **Applicazione desktop per registrare, pianificare e rendicontare le ore di didattica, attività istituzionali e progetti di ricerca.**
 
-Disponibile per **macOS, Windows 10/11 (64 bit)** e **Linux Mint (64 bit)**. È realizzata in Java Swing e usa un **database SQLite locale**, senza server. Questa distribuzione è la versione **3.10.2**.
+Disponibile per **macOS, Windows 10/11 (64 bit)** e **Linux Mint (64 bit)**. È realizzata in Java Swing e usa un **database SQLite locale**, senza server. Questa distribuzione è la versione **3.10.3**.
 
 **Dati personali:** i pacchetti distribuiti includono un database iniziale privo di registrazioni, progetti, colleghi e allegati. Le registrazioni di ciascun utente rimangono nel database locale e non vengono trasmesse al repository.
 
@@ -12,22 +12,23 @@ Disponibile per **macOS, Windows 10/11 (64 bit)** e **Linux Mint (64 bit)**. È 
 
 | Sistema | Prima installazione | Aggiornamento / alternativa |
 |---|---|---|
-| **macOS** | [Installazione vergine (.zip)](installers/macos/RegistroOre_3_10_2_MAC_VERGINE.zip) | [Aggiornamento con doppio clic (.zip)](installers/macos/RegistroOre_3_10_2_MAC_AGGIORNAMENTO.zip) |
-| **Windows 10/11 x64** | [Applicazione (.zip)](installers/windows/RegistroOre_3_10_2_Windows_x64.zip) | Sostituire l'eseguibile solo dopo un backup |
-| **Linux Mint x64** | [Pacchetto (.deb)](installers/linux/RegistroOre_3_10_2_LinuxMint_amd64.deb) | [Versione portabile (.zip)](installers/linux/RegistroOre_3_10_2_LinuxMint_Portabile.zip) |
+| **macOS** | [Installazione vergine (.zip)](installers/macos/RegistroOre_3_10_3_MAC_VERGINE.zip) | [Aggiornamento con doppio clic (.zip)](installers/macos/RegistroOre_3_10_3_MAC_AGGIORNAMENTO.zip) |
+| **Windows 10/11 x64** | [Applicazione (.zip)](installers/windows/RegistroOre_3_10_3_Windows_x64.zip) | Sostituire l'eseguibile solo dopo un backup |
+| **Linux Mint x64** | [Pacchetto (.deb)](installers/linux/RegistroOre_3_10_3_LinuxMint_amd64.deb) | [Versione portabile (.zip)](installers/linux/RegistroOre_3_10_3_LinuxMint_Portabile.zip) |
 
 Le versioni distribuite sono disponibili anche nella **[sezione Releases](../../releases)**.
 
 **Requisiti:** JRE/JDK **Java 17+** per Mac e Linux. Su Windows il launcher usa una Java Runtime compatibile, se presente, o può predisporla alla prima esecuzione (serve Internet). Gli eseguibili non sono firmati digitalmente: macOS e Windows possono richiedere un'autorizzazione di sicurezza.
 
-**Novità 3.10.2:** nel Registro, dopo una modifica o cancellazione, resti sullo stesso giorno senza perdere la posizione nello scorrimento.
+**Novità 3.10.3:** archivio delle attività inattive con ripristino, modifica anagrafica completa dei progetti, finanziamento e acronimo nella barra laterale, intestazioni del progetto più leggibili.
 
 ## Funzioni principali
 
 - Calendario e registro **multiannuale**, con più attività nello stesso giorno e inserimenti ripetuti su più giornate.
 - Monte ore di **1.500 ore per anno**, avvisi per giornate oltre **8 ore** e sospensioni didattiche personalizzabili.
 - **Categorie modificabili**, una per attività, con regole operative che distinguono ore didattiche, progetti e altre attività.
-- Schede **progetto** con intervallo di validità, collaboratori, documenti, blocchi mensili, chiusura ed esportazioni.
+- Schede **progetto** con nome dell’attività, finanziamento, acronimo e denominazione completa modificabili, intervallo di validità, collaboratori, documenti, blocchi mensili, chiusura ed esportazioni.
+- **Archivio attività** esplicito e reversibile: le attività archiviate non accettano nuove ore, ma conservano lo storico e i documenti. Eliminazione definitiva consentita solo se l’attività non ha dati collegati.
 - Storico dei **ruoli** di docenti e collaboratori, con tariffe configurate: Ordinario 81 €/h, Associato 53 €/h, Ricercatore 34 €/h.
 - Riepiloghi mensili, annuali e per progetto, esportabili in **CSV ed Excel**.
 - **Backup giornalieri** SQLite, ripristino, storico modifiche e controllo del database all'avvio.
@@ -67,7 +68,7 @@ L'applicazione Java compilata usa le dipendenze dichiarate in `pom.xml`. L'avvio
 
 ## Licenza, autore e attribuzione
 
-**© 2026 Silvio Barra (DIETI-UNINA) & ChatGPT · Registro Ore v3.10.2**
+**© 2026 Silvio Barra (DIETI-UNINA) & ChatGPT · Registro Ore v3.10.3**
 
 Autore: **Silvio Barra (DIETI-UNINA)**. Progetto sviluppato con il supporto di ChatGPT. La dicitura non implica un patrocinio ufficiale da parte delle organizzazioni citate.
 

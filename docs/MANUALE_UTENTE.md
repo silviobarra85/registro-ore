@@ -1,8 +1,8 @@
-# Manuale utente — Registro Ore 3.10.2
+# Manuale utente — Registro Ore 3.10.3
 
 **Destinatari:** docenti, ricercatori e collaboratori che devono registrare attività e rendicontare ore su progetti, didattica e altre attività.
 
-> Il manuale descrive la versione Java 3.10.2. Le etichette potrebbero variare leggermente secondo il sistema operativo. Conservare sempre una copia di sicurezza prima di importazioni e aggiornamenti.
+> Il manuale descrive la versione Java 3.10.3. Le etichette potrebbero variare leggermente secondo il sistema operativo. Conservare sempre una copia di sicurezza prima di importazioni e aggiornamenti.
 
 ## Indice
 
@@ -25,19 +25,19 @@
 
 ### macOS
 
-**Prima installazione:** scaricare `installers/macos/RegistroOre_3_10_2_MAC_VERGINE.zip`, decomprimere e fare doppio clic su `INSTALLA_REGISTRO_ORE.command`. La nuova applicazione verrà installata nella cartella applicativa prevista dallo script. Dopo l'installazione avviarla dal Finder.
+**Prima installazione:** scaricare `installers/macos/RegistroOre_3_10_3_MAC_VERGINE.zip`, decomprimere e fare doppio clic su `INSTALLA_REGISTRO_ORE.command`. La nuova applicazione verrà installata nella cartella applicativa prevista dallo script. Dopo l'installazione avviarla dal Finder.
 
-**Aggiornamento:** chiudere il programma, scaricare `RegistroOre_3_10_2_MAC_AGGIORNAMENTO.zip` e avviare con doppio clic `AGGIORNA_REGISTRO_ORE.command`. Questo pacchetto **non va usato per una prima installazione** e non deve sostituire i file SQLite personali.
+**Aggiornamento:** chiudere il programma, scaricare `RegistroOre_3_10_3_MAC_AGGIORNAMENTO.zip` e avviare con doppio clic `AGGIORNA_REGISTRO_ORE.command`. Questo pacchetto **non va usato per una prima installazione** e non deve sostituire i file SQLite personali.
 
 È richiesto Java 17+. Per un pacchetto non firmato macOS potrebbe richiedere un'apertura esplicita tramite le impostazioni di sicurezza: controllare la provenienza prima di autorizzare.
 
 ### Windows
 
-Scaricare `installers/windows/RegistroOre_3_10_2_Windows_x64.zip`, decomprimere in una cartella locale e fare doppio clic su **RegistroOre.exe**. Al primo avvio il launcher può richiedere Internet per il runtime Java. In presenza di SmartScreen verificare provenienza e checksum prima di procedere.
+Scaricare `installers/windows/RegistroOre_3_10_3_Windows_x64.zip`, decomprimere in una cartella locale e fare doppio clic su **RegistroOre.exe**. Al primo avvio il launcher può richiedere Internet per il runtime Java. In presenza di SmartScreen verificare provenienza e checksum prima di procedere.
 
 ### Linux Mint
 
-Scaricare `installers/linux/RegistroOre_3_10_2_LinuxMint_amd64.deb`, aprire con il gestore pacchetti e installare. In alternativa estrarre lo ZIP portabile ed eseguire `AVVIA_REGISTRO_ORE.sh`. Java 17+ è richiesto.
+Scaricare `installers/linux/RegistroOre_3_10_3_LinuxMint_amd64.deb`, aprire con il gestore pacchetti e installare. In alternativa estrarre lo ZIP portabile ed eseguire `AVVIA_REGISTRO_ORE.sh`. Java 17+ è richiesto.
 
 ## 2. Primo avvio e Profilo
 
@@ -85,7 +85,7 @@ Controllare sempre il totale annuale e la distribuzione giornaliera prima di inv
 
 Usare **+ Più giorni** per selezionare una stessa attività, definire le ore per data e scegliere più giornate dal calendario. L'operazione è soggetta a verifica preventiva di mesi bloccati, sospensioni e limite annuo. Se una delle date non è consentita, il salvataggio in blocco viene respinto.
 
-### Posizione conservata dopo il salvataggio (novità 3.10.2)
+### Posizione conservata dopo il salvataggio (novità 3.10.3)
 
 Nel **Registro mensile**, quando modifichi il nome di un'attività, le ore o una nota, oppure elimini una registrazione, il calendario **rimane sullo stesso giorno e nella stessa posizione dello scorrimento**. Non torna più automaticamente al primo giorno del mese. Anche se la giornata cambia altezza per l'aggiunta o la rimozione di una voce, la posizione visiva viene compensata.
 
@@ -106,11 +106,23 @@ Se cambi categoria a un'attività con ore già registrate, puoi scegliere fra:
 
 La cancellazione di una categoria utilizzata richiede il trasferimento delle attività in un'altra categoria, quando consentito.
 
+### Archivio delle attività (3.10.3)
+
+In **Gestione → Attività** selezionare un'attività e premere **Archivia**. L'attività scompare dalle proposte per le nuove registrazioni e, se è un progetto, dall'elenco dei progetti attivi nella barra laterale. Tutti i timesheet, i collaboratori e gli allegati restano nel database e nei riepiloghi storici.
+
+Da **Gestione → Archivio attività** si possono consultare e **ripristinare** le attività archiviate. Se si apre un progetto archiviato, i dati storici restano consultabili. Per rendicontare di nuovo bisogna ripristinarlo esplicitamente e rispettarne date e blocchi.
+
+**Archiviare non significa chiudere il progetto.** Lo stato *Progetto chiuso* blocca la rendicontazione, mentre l’archivio riguarda la visibilità dell'attività; le due operazioni sono distinte.
+
+**Eliminazione definitiva:** possibile soltanto se l'attività non ha registrazioni, collaboratori, documenti o blocchi collegati. Per progetti rendicontati utilizzare sempre l'archivio, non l'eliminazione.
+
 ## 7. Gestione dei progetti
 
 Dalla barra laterale aprire la **scheda del singolo progetto**. Le sezioni comprendono:
 
-- **Informazioni:** tipologia, finanziatore, codice progetto/CUP, ruolo nel progetto, date di inizio e fine e note.
+- **Informazioni:** nome attività registrato nei timesheet, **finanziamento** (es. FRA 2022), **acronimo** (es. GATT), **nome completo** (es. GAmification in Testing Teaching), tipologia, finanziatore, codice progetto/CUP, ruolo nel progetto, date di inizio/fine e note.
+- Nella barra laterale e nell’intestazione principale si legge `[FRA 2022] GATT`. Nel riquadro della scheda appare invece `GATT — GAmification in Testing Teaching` (esempio).
+- Il nome attività può essere corretto senza cambiare ore o date; se compare in timesheet già bloccati, il programma mostra un’avvertenza perché l’etichetta visibile nello storico cambierà.
 - **Colleghi e ore:** partecipanti, qualifiche, ruolo nel progetto e registrazioni giornaliere.
 - **Calendario annuale:** totale per giorno e dettaglio per persona.
 - **Documenti allegati:** archivio dei file di progetto.
@@ -178,7 +190,7 @@ Non pubblicare mai su GitHub database personali, allegati, file di log, timeshee
 
 ## 14. Risoluzione dei problemi
 
-- **L'app non si avvia e appare `UnsupportedClassVersionError`:** verificare Java **17+**; la versione 3.10.2 è compilata per Java 17.
+- **L'app non si avvia e appare `UnsupportedClassVersionError`:** verificare Java **17+**; la versione 3.10.3 è compilata per Java 17.
 - **Non compaiono ore o un progetto:** controllare il **percorso del database effettivamente usato**, non ripristinare subito una copia.
 - **Un giorno o un mese non accetta ore:** controllare stato di sospensione, blocchi mensili, chiusura progetto e limite di 1.500 ore.
 - **Non riesci ad aprire un allegato:** provarne lo scaricamento e l'apertura esterna; l'anteprima Office è in parte testuale.

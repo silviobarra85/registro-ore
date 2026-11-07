@@ -1,5 +1,18 @@
 # Changelog
 
+## v3.10.3 — 2026-11-07
+
+### Nuove funzionalità
+- Archivio esplicito e reversibile delle attività inattive, separato dalla chiusura dei progetti.
+- Le attività archiviate non sono proposte per nuove registrazioni e non possono ricevere nuove ore; i dati storici restano consultabili.
+- Gestione completa dell'anagrafica del progetto: nome attività, acronimo, denominazione completa, finanziamento.
+- Barra laterale e titolo alto mostrano `[Finanziamento] Acronimo`; il titolo interno mostra acronimo e nome completo.
+- Eliminazione sicura: vietata quando esistono registrazioni, collaboratori, documenti o blocchi.
+
+### Compatibilità
+- Migrazione SQLite non distruttiva, con backup prima dell'aggiunta delle colonne.
+- Nessuna modifica alle ore esistenti; Java 17 e database precedenti supportati.
+
 ## v3.10.2 — 2026-11-07
 
 - Uniformati i crediti pubblici a Silvio Barra (DIETI-UNINA) e chiarita la documentazione utente.

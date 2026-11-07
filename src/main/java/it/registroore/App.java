@@ -22,7 +22,7 @@ import java.awt.datatransfer.StringSelection;
 
 /** Registro ore accademico multiannuale. Desktop Swing + SQLite su file. */
 public final class App extends JFrame {
-  private static final String VERSION = "3.10.2";
+  private static final String VERSION = "3.10.3";
   private static final int DEFAULT_YEAR = 2026;
   private static final double YEAR_LIMIT = 1500.0;
   private static final String UNSET_ROLE = "Da impostare";
@@ -117,6 +117,7 @@ public final class App extends JFrame {
   private List<Activity> activities = List.of();
   private List<Category> categories = List.of();
   private Set<Integer> projectHistoryIds=Set.of();
+  private Set<Integer> archivedIds=Set.of();
   private static final Preferences FILE_PREFERENCES=Preferences.userNodeForPackage(App.class).node("documenti");
   private List<LogEntry> logs = List.of();
   private Map<LocalDate,List<LogEntry>> byDate = Map.of();
@@ -132,6 +133,7 @@ public final class App extends JFrame {
   record LockedMonth(int year, int month, String reason, String lockedAt) { }
   record ProfileInfo(String name, String defaultRole) { }
   record ProjectHistory(String project, int year, double hours, String role, double cost) { }
+  record ProjectBrand(String funding,String acronym,String fullName) { }
   record ProjectDetails(int activityId,String type,String funder,String code,String projectRole,Integer startYear,Integer startMonth,Integer endYear,Integer endMonth,String notes,LocalDate startDate,LocalDate endDate,boolean closed) { }
   record ProjectMonthLock(int activityId,int year,int month,String reason) { }
   record ProjectPerson(int id,int activityId,String name,String qualification,String projectRole,String notes) { }
@@ -200,15 +202,35 @@ public final class App extends JFrame {
     if(!sectionPages.isEmpty())return;
     sectionPages.put("CALENDARIO E REGISTRO",List.of("Calendario","Registro","Cerca","Riepilogo"));
     sectionPages.put("RENDICONTAZIONE",List.of("Progetti","Attività Ordinaria","Didattica Frontale","Didattica Integrativa"));
-    sectionPages.put("GESTIONE",List.of("Attività","Categorie","Sospensioni","Annualità","Profilo","Note"));
+    sectionPages.put("GESTIONE",List.of("Attività","Archivio attività","Categorie","Sospensioni","Annualità","Profilo","Note"));
     sectionPages.put("SCHEDE PROGETTO",List.of());
     sectionPages.put("SISTEMA",List.of("Backup e ripristino","Storico modifiche","Stato database","Esporta CSV / Excel","Salva copia database"));
     for(String key:sectionPages.keySet())openNavigationSections.putIfAbsent(key,
         key.equals("CALENDARIO E REGISTRO")||key.equals("RENDICONTAZIONE")) ;
   }
   private List<Activity> availableProjects(){
-    return activities.stream().filter(a->isProject(a.category())||projectHistoryIds.contains(a.id()))
+    return activities.stream().filter(a->!archivedIds.contains(a.id())&&(isProject(a.category())||projectHistoryIds.contains(a.id())))
       .sorted(Comparator.comparing(Activity::name,String.CASE_INSENSITIVE_ORDER)).toList();
+  }
+  private static String defaultAcronym(String name){
+    String text=name==null?"":name.trim();
+    return text.replaceFirst("(?i)^PROGETTO\\s+","").trim();
+  }
+  private String projectNavLabel(Activity a) {
+    try {
+      ProjectDetails d=store.projectDetails(a.id());
+      ProjectBrand b=store.projectBrand(a.id());
+      String funding=b.funding().isBlank()?d.type():b.funding();
+      String acronym=b.acronym().isBlank()?defaultAcronym(a.name()):b.acronym();
+      String tag=funding.trim();
+      if(tag.startsWith("[")&&tag.endsWith("]"))tag=tag.substring(1,tag.length()-1);
+      return (tag.isBlank()?"":"["+tag+"] ")+acronym;
+    } catch(SQLException e) { return a.name(); }
+  }
+  private static String projectFullTitle(Activity a,ProjectBrand b) {
+    String acronym=b.acronym().isBlank()?defaultAcronym(a.name()):b.acronym();
+    String full=b.fullName().isBlank()?a.name():b.fullName();
+    return acronym.equalsIgnoreCase(full)?acronym:acronym+" — "+full;
   }
   private boolean groupContainsCurrentPage(String group){
     if("SCHEDE PROGETTO".equals(group))return page.equals("Scheda progetto");
@@ -283,9 +305,9 @@ public final class App extends JFrame {
           }
           if("SCHEDE PROGETTO".equals(group)){
             List<Activity> projects=availableProjects();
-            for(Activity a:projects){JButton b=sidebarButton("• "+a.name(),true);b.setMaximumSize(new Dimension(249,32));
+            for(Activity a:projects){JButton b=sidebarButton("• "+projectNavLabel(a),true);b.setMaximumSize(new Dimension(249,32));
               b.setBorder(new EmptyBorder(6,29,6,4));b.setFont(new Font("SansSerif",Font.PLAIN,11));
-              b.setToolTipText(a.name());b.addActionListener(e->openProject(a.id()));
+              b.setToolTipText(projectNavLabel(a)+" · "+a.name());b.addActionListener(e->openProject(a.id()));
               boolean active=page.equals("Scheda progetto")&&a.id()==selectedProjectId;
               b.setBackground(active?ORANGE:NAVY);b.setForeground(active?NAVY:WHITE);sections.add(b);
             }
@@ -323,7 +345,7 @@ public final class App extends JFrame {
   private JPopupMenu sectionMenu(String group){
     JPopupMenu menu=new JPopupMenu();
     if("SCHEDE PROGETTO".equals(group)){
-      for(Activity a:availableProjects()){JMenuItem item=new JMenuItem(a.name());item.addActionListener(e->openProject(a.id()));menu.add(item);}
+      for(Activity a:availableProjects()){JMenuItem item=new JMenuItem(projectNavLabel(a));item.addActionListener(e->openProject(a.id()));menu.add(item);}
       if(menu.getComponentCount()==0){JMenuItem empty=new JMenuItem("Nessun progetto");empty.setEnabled(false);menu.add(empty);}
     }else for(String title:sectionPages.get(group)){
       JMenuItem item=new JMenuItem(title);item.addActionListener(e->navClick(title));menu.add(item);
@@ -416,7 +438,7 @@ public final class App extends JFrame {
     }catch(Exception ex){error(ex);}}
   }
   private void reload() throws SQLException {
-    categories=store.getCategories();activities=store.getActivities();projectHistoryIds=store.projectHistoryIds();logs=store.getLogs(selectedYear);suspensions=store.getSuspensions(selectedYear);annual=store.getAnnual(selectedYear);
+    categories=store.getCategories();activities=store.getActivities();projectHistoryIds=store.projectHistoryIds();archivedIds=store.getArchivedActivityIds();logs=store.getLogs(selectedYear);suspensions=store.getSuspensions(selectedYear);annual=store.getAnnual(selectedYear);
     refreshProfileHeader();updateLastSave();
     Map<LocalDate,List<LogEntry>> index=new HashMap<>();for(LogEntry e:logs)index.computeIfAbsent(e.date(), k->new ArrayList<>()).add(e);byDate=index;
   }
@@ -426,10 +448,10 @@ public final class App extends JFrame {
     catch(Exception ex){error(ex);}
   }
   private void showPage(String name){
-    page=name;pageTitle.setText(switch(name){case "Calendario"->"Panoramica annuale";case "Registro"->"Registro mensile";case "Cerca"->"Ricerca registrazioni";case "Riepilogo"->"Riepilogo delle ore";case "Progetti"->"Progetti e valorizzazione";case "Didattica Frontale"->"Didattica frontale";case "Didattica Integrativa"->"Didattica integrativa";case "Attività"->"Anagrafica delle attività";case "Categorie"->"Gestione delle categorie";case "Sospensioni"->"Giorni di sospensione";case "Annualità"->"Annualità e mesi bloccati";case "Profilo"->"Profilo docente e costo orario";case "Scheda progetto"->"Scheda del progetto";case "Backup e ripristino"->"Backup automatici e ripristino";case "Storico modifiche"->"Cronologia delle modifiche";case "Attività Ordinaria"->"Attività ordinaria";default->"Note e promemoria";});
+    page=name;pageTitle.setText(switch(name){case "Calendario"->"Panoramica annuale";case "Registro"->"Registro mensile";case "Cerca"->"Ricerca registrazioni";case "Riepilogo"->"Riepilogo delle ore";case "Progetti"->"Progetti e valorizzazione";case "Didattica Frontale"->"Didattica frontale";case "Didattica Integrativa"->"Didattica integrativa";case "Attività"->"Anagrafica delle attività";case "Archivio attività"->"Archivio delle attività";case "Categorie"->"Gestione delle categorie";case "Sospensioni"->"Giorni di sospensione";case "Annualità"->"Annualità e mesi bloccati";case "Profilo"->"Profilo docente e costo orario";case "Scheda progetto"->"Scheda del progetto";case "Backup e ripristino"->"Backup automatici e ripristino";case "Storico modifiche"->"Cronologia delle modifiche";case "Attività Ordinaria"->"Attività ordinaria";default->"Note e promemoria";});
     for(var n:navigation.entrySet()){boolean active=n.getKey().equals(name);n.getValue().setBackground(active?ORANGE:NAVY);n.getValue().setForeground(active?NAVY:WHITE);}
-    if(name.equals("Scheda progetto")){Activity activeProject=activities.stream().filter(a->a.id()==selectedProjectId).findFirst().orElse(null);if(activeProject!=null)pageTitle.setText(activeProject.name());refreshSidebar();}
-    JPanel current=switch(name){case "Calendario"->calendar();case "Registro"->register();case "Cerca"->searchPage();case "Riepilogo"->summary();case "Progetti"->categorySummary("PROGETTI",true);case "Attività Ordinaria"->categorySummary(GROUPS[4],false);case "Backup e ripristino"->backupsPanel();case "Storico modifiche"->auditPanel();case "Didattica Frontale"->categorySummary(GROUPS[0],false);case "Didattica Integrativa"->categorySummary(GROUPS[1],false);case "Attività"->activityPanel();case "Categorie"->categoryPanel();case "Sospensioni"->holidayPanel();case "Annualità"->annualPanel();case "Profilo"->profilePanel();case "Scheda progetto"->projectPage();default->notesPanel();};
+    if(name.equals("Scheda progetto")){Activity activeProject=activities.stream().filter(a->a.id()==selectedProjectId).findFirst().orElse(null);if(activeProject!=null)pageTitle.setText(projectNavLabel(activeProject));refreshSidebar();}
+    JPanel current=switch(name){case "Calendario"->calendar();case "Registro"->register();case "Cerca"->searchPage();case "Riepilogo"->summary();case "Progetti"->categorySummary("PROGETTI",true);case "Attività Ordinaria"->categorySummary(GROUPS[4],false);case "Backup e ripristino"->backupsPanel();case "Storico modifiche"->auditPanel();case "Didattica Frontale"->categorySummary(GROUPS[0],false);case "Didattica Integrativa"->categorySummary(GROUPS[1],false);case "Attività"->activityPanel();case "Archivio attività"->archivePanel();case "Categorie"->categoryPanel();case "Sospensioni"->holidayPanel();case "Annualità"->annualPanel();case "Profilo"->profilePanel();case "Scheda progetto"->projectPage();default->notesPanel();};
     body.removeAll();body.add(current,BorderLayout.CENTER);body.revalidate();body.repaint();
   }
   private static JPanel panel(LayoutManager layout) {JPanel p=new JPanel(layout);p.setBackground(BG);return p;}
@@ -581,6 +603,7 @@ public final class App extends JFrame {
         if(name.equalsIgnoreCase("ATTIVITÀ SOSPESE"))throw new IllegalArgumentException("Per sospendere un giorno usa la sezione Sospensioni.");
         Double n=null;String raw=hours.getText().trim().replace(',','.');if(!raw.isEmpty()){n=Double.valueOf(raw);if(!Double.isFinite(n)||n<0||n>24)throw new IllegalArgumentException("Le ore devono essere comprese tra 0 e 24.");}
         Activity known=activities.stream().filter(x->x.name().equalsIgnoreCase(name)).findFirst().orElse(null);
+        if(known!=null&&archivedIds.contains(known.id()))throw new IllegalArgumentException("Questa attività è archiviata. Ripristinala da Gestione → Archivio attività prima di inserire nuove ore.");
         String category=known==null?(String)group.getSelectedItem():known.category();
         if(n!=null&&isTeaching(category)&&blocked(d)){
           throw new IllegalArgumentException("Il giorno " + d.format(DISPLAY)+" è sospeso o è un weekend.\nNon si possono registrare ore di didattica; sono consentite ore sui progetti.");}
@@ -679,7 +702,7 @@ public final class App extends JFrame {
 
   /** Autocompletamento interno al dialogo: nessun popup, il campo mantiene sempre il focus. */
   private JPanel installActivitySuggestions(JTextField text,JComboBox<String> group){
-    List<Activity> searchable=activities.stream().filter(x->!x.category().equals("SEGNAPOSTO SOSPENSIONE")).toList();
+    List<Activity> searchable=activities.stream().filter(x->!archivedIds.contains(x.id())&&!x.category().equals("SEGNAPOSTO SOSPENSIONE")).toList();
     JPanel box=new JPanel(new BorderLayout(0,5));box.setOpaque(false);
     box.add(text,BorderLayout.NORTH);
     DefaultListModel<String> model=new DefaultListModel<>();
@@ -930,13 +953,27 @@ public final class App extends JFrame {
       for(PersonHours e:colleagueHours)teamCost+=store.hourlyRateAt(e.personId(),e.date())*e.hours();
     }catch(Exception ex){error(ex);}
     JPanel banner=panel(new BorderLayout(10,8));
-    JLabel title=label(project.name(),20,true);title.setOpaque(true);title.setBackground(color(project.color()));title.setBorder(new EmptyBorder(8,13,8,13));banner.add(title,BorderLayout.WEST);
+    JLabel title=label(projectFullTitle(project,storeProjectBrand(project.id())),19,true);title.setOpaque(true);title.setBackground(color(project.color()));title.setBorder(new EmptyBorder(8,13,8,13));banner.add(title,BorderLayout.WEST);
     banner.add(label(selectedYear+"  •  Tue ore: "+fmt(own)+"  •  Colleghi: "+fmt(team)+"  •  Totale squadra: "+fmt(own+team),14,true),BorderLayout.EAST);
     JPanel bannerWithCosts=panel(new BorderLayout(0,4));bannerWithCosts.add(banner,BorderLayout.NORTH);
     bannerWithCosts.add(label("Costo valorizzato: le tue ore "+eur(personalCost)+"  •  colleghi "+eur(teamCost)+"  •  totale squadra "+eur(personalCost+teamCost)+" (solo ruoli noti)",12,true),BorderLayout.SOUTH);
     JButton exportProject=action("Esporta ore progetto (CSV / Excel)");
     exportProject.addActionListener(e->exportProjectDialog(project));
-    bannerWithCosts.add(exportProject,BorderLayout.EAST);
+    JPanel projectButtons=panel(new FlowLayout(FlowLayout.RIGHT,7,0));projectButtons.add(exportProject);
+    if(!archivedIds.contains(project.id())){
+      JButton archiveProject=subtle("Archivia progetto");projectButtons.add(archiveProject);
+      archiveProject.addActionListener(e->{if(ask("Archiviare «"+projectNavLabel(project)+"»? Le ore, gli allegati e i colleghi saranno conservati; il progetto sparirà dalla barra laterale."))
+        try{store.setActivityArchived(project.id(),true);selectedProjectId=-1;page="Archivio attività";changed();}catch(Exception ex){error(ex);}
+      });
+    } else {
+      JButton restoreProject=subtle("Ripristina progetto");projectButtons.add(restoreProject);
+      restoreProject.addActionListener(e->{try{store.setActivityArchived(project.id(),false);changed();}catch(Exception ex){error(ex);}});
+    }
+    JButton deleteProject=subtle("Elimina progetto");projectButtons.add(deleteProject);
+    deleteProject.addActionListener(e->{if(ask("Eliminare definitivamente il progetto? L'operazione sarà rifiutata se ci sono ore, allegati, colleghi o blocchi. Usa Archivia per conservarne lo storico."))
+      try{store.deleteActivity(project.id());selectedProjectId=-1;page="Archivio attività";changed();}catch(Exception ex){error(ex);}
+    });
+    bannerWithCosts.add(projectButtons,BorderLayout.EAST);
     p.add(bannerWithCosts,BorderLayout.NORTH);
     JTabbedPane tabs=new JTabbedPane();tabs.setFont(new Font("SansSerif",Font.BOLD,13));
     tabs.addTab("Informazioni",projectInfoPanel(project,details));
@@ -955,15 +992,27 @@ public final class App extends JFrame {
   private static LocalDate parseOptionalDate(String value) {
     String v=value.trim();return v.isEmpty()?null:LocalDate.parse(v,INPUT);
   }
+  private ProjectBrand storeProjectBrand(int id){
+    try{return store.projectBrand(id);}catch(SQLException e){return new ProjectBrand("","","");}
+  }
   private JPanel projectInfoPanel(Activity a,ProjectDetails d){
     JPanel outer=panel(new BorderLayout(0,12));outer.setBorder(new EmptyBorder(16,17,12,17));
     JPanel form=panel(new GridBagLayout());GridBagConstraints g=new GridBagConstraints();g.gridx=0;g.gridy=0;g.insets=new Insets(8,10,8,10);g.anchor=GridBagConstraints.WEST;
+    ProjectBrand brand=storeProjectBrand(a.id());
+    JTextField activityName=new JTextField(a.name(),35);
+    JTextField funding=new JTextField(brand.funding().isBlank()?d.type():brand.funding(),35);
+    JTextField acronym=new JTextField(brand.acronym().isBlank()?defaultAcronym(a.name()):brand.acronym(),35);
+    JTextField fullName=new JTextField(brand.fullName().isBlank()?a.name():brand.fullName(),35);
     JTextField type=new JTextField(d.type(),35),funder=new JTextField(d.funder(),35),code=new JTextField(d.code(),35),projectRole=new JTextField(d.projectRole(),35);
     JTextField start=new JTextField(d.startDate()==null?"":d.startDate().format(DISPLAY),15);
     JTextField end=new JTextField(d.endDate()==null?"":d.endDate().format(DISPLAY),15);
     JCheckBox closed=new JCheckBox("Progetto CHIUSO: impedisci nuove ore e modifiche alle ore del progetto",d.closed());
     closed.setOpaque(false);
     JTextArea notes=new JTextArea(d.notes(),9,48);notes.setLineWrap(true);notes.setWrapStyleWord(true);notes.setFont(new Font("SansSerif",Font.PLAIN,13));
+    field(form,g,"Nome attività nel registro",activityName);
+    field(form,g,"Finanziamento (es. FRA 2022)",funding);
+    field(form,g,"Acronimo (es. GATT)",acronym);
+    field(form,g,"Nome completo progetto",fullName);
     field(form,g,"Tipologia (PRIN, PNRR, europeo...)",type);field(form,g,"Ente finanziatore / committente",funder);
     field(form,g,"Codice / CUP / identificativo",code);field(form,g,"Tuo ruolo nel progetto",projectRole);
     field(form,g,"Inizio progetto (gg/mm/aaaa)",start);field(form,g,"Fine progetto (gg/mm/aaaa, inclusa)",end);
@@ -975,9 +1024,12 @@ public final class App extends JFrame {
       if(startDay!=null&&endDay!=null&&endDay.isBefore(startDay))throw new IllegalArgumentException("La fine del progetto precede l'inizio.");
       if(closed.isSelected()&&!d.closed()&&!ask("Chiudere definitivamente il progetto? Non sarà più possibile inserire, modificare o cancellare ore (anche dei colleghi) finché non lo riapri."))return;
       if(!closed.isSelected()&&d.closed()&&!ask("Riaprire il progetto? Resta comunque il limite delle date e dei mesi bloccati."))return;
-      store.saveProjectDetails(new ProjectDetails(a.id(),type.getText().trim(),funder.getText().trim(),code.getText().trim(),projectRole.getText().trim(),
+      if(!activityName.getText().trim().equals(a.name())&&store.hasLockedEntries(a.id())&&
+        !ask("Questa attività compare in timesheet bloccati. La rinomina cambierà il nome mostrato nei riepiloghi storici, ma non le ore. Confermi?"))return;
+      store.saveProjectProfile(new ProjectDetails(a.id(),type.getText().trim(),funder.getText().trim(),code.getText().trim(),projectRole.getText().trim(),
         startDay==null?null:startDay.getYear(),startDay==null?null:startDay.getMonthValue(),
-        endDay==null?null:endDay.getYear(),endDay==null?null:endDay.getMonthValue(),notes.getText().trim(),startDay,endDay,closed.isSelected()));
+        endDay==null?null:endDay.getYear(),endDay==null?null:endDay.getMonthValue(),notes.getText().trim(),startDay,endDay,closed.isSelected()),
+        activityName.getText().trim(),funding.getText().trim(),acronym.getText().trim(),fullName.getText().trim());
       projectTabIndex=0;changed();JOptionPane.showMessageDialog(this,"Informazioni e stato del progetto salvati.");
     }catch(Exception ex){error(ex);}});
     JScrollPane sc=new JScrollPane(form);sc.setBorder(null);sc.getViewport().setBackground(BG);outer.add(sc,BorderLayout.CENTER);
@@ -1367,8 +1419,8 @@ public final class App extends JFrame {
     JPanel p=panel(new BorderLayout(0,13));p.setBorder(new EmptyBorder(22,27,24,27));
     JPanel top=new JPanel(new BorderLayout());top.setOpaque(false);top.add(label("Ogni attività ha una categoria corrente; le registrazioni conservano anche la categoria storica.",13,false),BorderLayout.WEST);
     JPanel buttons=new JPanel(new FlowLayout(FlowLayout.RIGHT,8,0));buttons.setOpaque(false);
-    JButton add=action("+ Aggiungi"),edit=subtle("Modifica"),remove=subtle("Elimina");buttons.add(add);buttons.add(edit);buttons.add(remove);top.add(buttons,BorderLayout.EAST);p.add(top,BorderLayout.NORTH);
-    List<Activity> sorted=new ArrayList<>(activities);sorted.removeIf(x->x.category().equals("SEGNAPOSTO SOSPENSIONE"));sorted.sort(Comparator.comparing(Activity::category).thenComparing(Activity::name));
+    JButton add=action("+ Aggiungi"),edit=subtle("Modifica"),archive=subtle("Archivia"),remove=subtle("Elimina");buttons.add(add);buttons.add(edit);buttons.add(archive);buttons.add(remove);top.add(buttons,BorderLayout.EAST);p.add(top,BorderLayout.NORTH);
+    List<Activity> sorted=new ArrayList<>(activities);sorted.removeIf(x->x.category().equals("SEGNAPOSTO SOSPENSIONE")||archivedIds.contains(x.id()));sorted.sort(Comparator.comparing(Activity::category).thenComparing(Activity::name));
     String[] names={"Attività","Categoria","Colore","Ore totali"};
     JTable t=makeTable(new AbstractTableModel(){public int getColumnCount(){return 4;}public int getRowCount(){return sorted.size();}public String getColumnName(int c){return names[c];}
       public Object getValueAt(int r,int c){Activity a=sorted.get(r);return switch(c){case 0->a.name();case 1->a.category();case 2->a.color();default->fmt(logs.stream().filter(e->e.activity().id()==a.id()&&e.hours()!=null).mapToDouble(e->e.hours()).sum());};}});
@@ -1377,9 +1429,39 @@ public final class App extends JFrame {
     JScrollPane sc=new JScrollPane(t);sc.setBorder(new LineBorder(LINE));p.add(sc,BorderLayout.CENTER);
     add.addActionListener(e->activityEditor(null));
     edit.addActionListener(e->{int r=t.getSelectedRow();if(r>=0)activityEditor(sorted.get(t.convertRowIndexToModel(r)));});
+    archive.addActionListener(e->{int r=t.getSelectedRow();if(r<0)return;Activity a=sorted.get(t.convertRowIndexToModel(r));
+      if(ask("Archiviare «"+a.name()+"»? Le ore e i documenti resteranno consultabili, ma non potrai inserire nuove ore finché non ripristini l'attività.")){
+        try{store.setActivityArchived(a.id(),true);changed();}catch(Exception ex){error(ex);}
+      }
+    });
     remove.addActionListener(e->{int r=t.getSelectedRow();if(r<0)return;Activity a=sorted.get(t.convertRowIndexToModel(r));if(ask("Eliminare l'attività '"+a.name()+"'? È possibile solo se non ci sono registrazioni.")){try{store.deleteActivity(a.id());changed();}catch(Exception x){error(x);}}});
     t.addMouseListener(new MouseAdapter(){public void mouseClicked(MouseEvent e){if(e.getClickCount()==2){int r=t.getSelectedRow();if(r>=0)activityEditor(sorted.get(t.convertRowIndexToModel(r)));}}});
     return p;
+  }
+  private JPanel archivePanel(){
+    JPanel panel=panel(new BorderLayout(0,12));panel.setBorder(new EmptyBorder(22,27,24,27));
+    List<Activity> archived=activities.stream().filter(a->archivedIds.contains(a.id())).sorted(Comparator.comparing(Activity::name,String.CASE_INSENSITIVE_ORDER)).toList();
+    JLabel intro=label("Attività archiviate esplicitamente: lo storico resta disponibile; non è possibile rendicontare nuove ore.",13,false);
+    panel.add(intro,BorderLayout.NORTH);
+    JTable table=makeTable(new AbstractTableModel(){public int getRowCount(){return archived.size();}public int getColumnCount(){return 3;}
+      public String getColumnName(int c){return new String[]{"Attività", "Categoria", "Tipo"}[c];}
+      public Object getValueAt(int r,int c){Activity a=archived.get(r);return switch(c){case 0->a.name();case 1->a.category();default->(isProject(a.category())||projectHistoryIds.contains(a.id()))?"Progetto":"Attività";};}
+    });table.setRowHeight(31);
+    JPanel footer=panel(new FlowLayout(FlowLayout.RIGHT));
+    JButton restore=action("Ripristina attività"),details=subtle("Apri / Modifica"),remove=subtle("Elimina definitivamente");
+    footer.add(details);footer.add(restore);footer.add(remove);
+    restore.addActionListener(e->{int r=table.getSelectedRow();if(r<0)return;Activity a=archived.get(table.convertRowIndexToModel(r));
+      if(ask("Ripristinare «"+a.name()+"» tra le attività attive?"))try{store.setActivityArchived(a.id(),false);changed();}catch(Exception ex){error(ex);}
+    });
+    details.addActionListener(e->{int r=table.getSelectedRow();if(r<0)return;Activity a=archived.get(table.convertRowIndexToModel(r));
+      if(isProject(a.category())||projectHistoryIds.contains(a.id()))openProject(a.id());else activityEditor(a);
+    });
+    remove.addActionListener(e->{int r=table.getSelectedRow();if(r<0)return;Activity a=archived.get(table.convertRowIndexToModel(r));
+      if(ask("Eliminare definitivamente «"+a.name()+"»? L'eliminazione è possibile soltanto se non ci sono registrazioni, colleghi, blocchi o allegati.")){
+        try{store.deleteActivity(a.id());changed();}catch(Exception ex){error(ex);}
+      }
+    });
+    panel.add(new JScrollPane(table),BorderLayout.CENTER);panel.add(footer,BorderLayout.SOUTH);return panel;
   }
   /** La modifica della categoria permette di conservare lo storico o riclassificare in modo esplicito. */
   private void activityEditor(Activity old){
@@ -1728,6 +1810,7 @@ public final class App extends JFrame {
           }
           for(String op:new String[]{"INSERT","UPDATE","DELETE"}){
             String name="audit_v310_"+table+"_"+op.toLowerCase(Locale.ROOT);
+            if(table.equals("activities")||table.equals("project_details"))st.execute("DROP TRIGGER IF EXISTS "+name);
             String oldJson=columnsJson(cols,"OLD",table),newJson=columnsJson(cols,"NEW",table);
             String before=op.equals("INSERT")?"NULL":oldJson;
             String after=op.equals("DELETE")?"NULL":newJson;
@@ -1814,7 +1897,15 @@ public final class App extends JFrame {
           safety.execute("VACUUM INTO '"+backup.toAbsolutePath().toString().replace("'","''")+"'");
         }catch(Exception ex){throw new SQLException("Backup prima della migrazione storica non riuscito: "+ex.getMessage(),ex);}
       }
+      if(!hasColumn("activities","archived_at")){
+        Path backup=Paths.get(databasePath.toString()+".backup-prima-archivio-v3103.sqlite");
+        if(!Files.exists(backup))try(Statement safety=db.createStatement()){
+          safety.execute("VACUUM INTO '"+backup.toAbsolutePath().toString().replace("'","''")+"'");
+        }catch(Exception ex){throw new SQLException("Backup prima dell'archiviazione non riuscito: "+ex.getMessage(),ex);}
+      }
       try(Statement st=db.createStatement()){
+        if(!hasColumn("activities","archived_at"))st.execute("ALTER TABLE activities ADD COLUMN archived_at TEXT");
+        // Non cambiare le tabelle storiche: solo attributi aggiuntivi del progetto.
         // Le migrazioni delle etichette storiche non toccano ore, date o note.
         // I trigger legacy bloccavano qualsiasi UPDATE, anche la sola etichetta.
         // Vengono ricreati subito sotto per proteggere soltanto i campi rendicontabili.
@@ -1840,6 +1931,9 @@ public final class App extends JFrame {
         st.execute("CREATE INDEX IF NOT EXISTS idx_person_role_date ON person_role_history(person_id,start_date)");
         st.execute("CREATE TABLE IF NOT EXISTS month_locks (year INTEGER NOT NULL REFERENCES annual_settings(year), month INTEGER NOT NULL CHECK(month BETWEEN 1 AND 12), reason TEXT NOT NULL DEFAULT '', locked_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(year,month))");
         st.execute("CREATE TABLE IF NOT EXISTS project_details (activity_id INTEGER PRIMARY KEY REFERENCES activities(id) ON DELETE CASCADE, type TEXT NOT NULL DEFAULT '',funder TEXT NOT NULL DEFAULT '',project_code TEXT NOT NULL DEFAULT '',project_role TEXT NOT NULL DEFAULT '',start_year INTEGER,start_month INTEGER CHECK(start_month BETWEEN 1 AND 12),end_year INTEGER,end_month INTEGER CHECK(end_month BETWEEN 1 AND 12),notes TEXT NOT NULL DEFAULT '')");
+        if(!hasColumn("project_details","funding_label"))st.execute("ALTER TABLE project_details ADD COLUMN funding_label TEXT NOT NULL DEFAULT ''");
+        if(!hasColumn("project_details","acronym"))st.execute("ALTER TABLE project_details ADD COLUMN acronym TEXT NOT NULL DEFAULT ''");
+        if(!hasColumn("project_details","full_name"))st.execute("ALTER TABLE project_details ADD COLUMN full_name TEXT NOT NULL DEFAULT ''");
         st.execute("CREATE TABLE IF NOT EXISTS project_people (id INTEGER PRIMARY KEY AUTOINCREMENT,activity_id INTEGER NOT NULL REFERENCES activities(id) ON DELETE CASCADE,full_name TEXT NOT NULL,qualification TEXT NOT NULL DEFAULT '',project_role TEXT NOT NULL DEFAULT '',notes TEXT NOT NULL DEFAULT '',UNIQUE(activity_id,full_name COLLATE NOCASE))");
         st.execute("CREATE TABLE IF NOT EXISTS project_person_hours (id INTEGER PRIMARY KEY AUTOINCREMENT,person_id INTEGER NOT NULL REFERENCES project_people(id) ON DELETE RESTRICT,work_date TEXT NOT NULL,hours REAL NOT NULL CHECK(hours>0 AND hours<=24),note TEXT NOT NULL DEFAULT '')");
         st.execute("CREATE INDEX IF NOT EXISTS idx_project_hours_date ON project_person_hours(work_date,person_id)");
@@ -1891,10 +1985,16 @@ public final class App extends JFrame {
         st.execute("CREATE TRIGGER category_protect_delete BEFORE DELETE ON categories WHEN EXISTS(SELECT 1 FROM activities WHERE category=OLD.name) BEGIN SELECT RAISE(ABORT,'Categoria ancora utilizzata: trasferisci prima le attività'); END");
         // Non consentire di cambiare il nome di un'attività in un timesheet chiuso.
         // La rinomina di una categoria è invece consentita e non cambia il tipo funzionale.
-        st.execute("CREATE TRIGGER activity_lock_update BEFORE UPDATE OF name ON activities WHEN OLD.name!=NEW.name AND EXISTS(SELECT 1 FROM entries e JOIN month_locks l ON l.year=CAST(substr(e.work_date,1,4) AS INTEGER) AND l.month=CAST(substr(e.work_date,6,2) AS INTEGER) WHERE e.activity_id=OLD.id) BEGIN SELECT RAISE(ABORT,'Attività usata in un mese bloccato: nome non modificabile'); END");
+        /* Il nome anagrafico e il titolo possono essere corretti anche dopo la rendicontazione: nessun vincolo sulle ore viene rimosso. */
         st.execute("CREATE TRIGGER IF NOT EXISTS annual_role_lock_update BEFORE UPDATE OF role ON annual_settings WHEN NEW.role!=OLD.role AND EXISTS (SELECT 1 FROM month_locks l JOIN entries e ON l.year=CAST(substr(e.work_date,1,4) AS INTEGER) AND l.month=CAST(substr(e.work_date,6,2) AS INTEGER) JOIN activities a ON a.id=e.activity_id WHERE l.year=OLD.year AND COALESCE(e.category_snapshot,a.category) IN (SELECT name FROM categories WHERE kind='PROGETTI') AND e.hours IS NOT NULL) BEGIN SELECT RAISE(ABORT,'Ruolo non modificabile: timesheet di progetto già bloccati nell’anno'); END");
         // Regole universali di progetto: applicate dal motore SQLite, anche fuori dall'interfaccia.
         st.execute("DROP TRIGGER IF EXISTS project_entries_insert");
+        st.execute("DROP TRIGGER IF EXISTS archived_entry_insert");
+        st.execute("CREATE TRIGGER archived_entry_insert BEFORE INSERT ON entries WHEN EXISTS(SELECT 1 FROM activities WHERE id=NEW.activity_id AND archived_at IS NOT NULL) BEGIN SELECT RAISE(ABORT,'Attività archiviata: ripristinala prima di rendicontare'); END");
+        st.execute("DROP TRIGGER IF EXISTS archived_entry_reassign");
+        st.execute("CREATE TRIGGER archived_entry_reassign BEFORE UPDATE OF activity_id ON entries WHEN NEW.activity_id<>OLD.activity_id AND EXISTS(SELECT 1 FROM activities WHERE id=NEW.activity_id AND archived_at IS NOT NULL) BEGIN SELECT RAISE(ABORT,'Attività archiviata: ripristinala prima di rendicontare'); END");
+        st.execute("DROP TRIGGER IF EXISTS archived_team_insert");
+        st.execute("CREATE TRIGGER archived_team_insert BEFORE INSERT ON project_person_hours WHEN EXISTS(SELECT 1 FROM project_people pp JOIN activities a ON a.id=pp.activity_id WHERE pp.id=NEW.person_id AND a.archived_at IS NOT NULL) BEGIN SELECT RAISE(ABORT,'Progetto archiviato: ripristinalo prima di rendicontare'); END");
         st.execute("CREATE TRIGGER project_entries_insert BEFORE INSERT ON entries WHEN COALESCE(NEW.category_snapshot,(SELECT category FROM activities WHERE id=NEW.activity_id)) IN (SELECT name FROM categories WHERE kind='PROGETTI') AND (EXISTS(SELECT 1 FROM project_details p WHERE p.activity_id=NEW.activity_id AND (p.closed=1 OR (p.start_date IS NOT NULL AND NEW.work_date<p.start_date) OR (p.end_date IS NOT NULL AND NEW.work_date>p.end_date))) OR EXISTS(SELECT 1 FROM project_month_locks l WHERE l.activity_id=NEW.activity_id AND l.year=CAST(substr(NEW.work_date,1,4) AS INTEGER) AND l.month=CAST(substr(NEW.work_date,6,2) AS INTEGER))) BEGIN SELECT RAISE(ABORT,'Progetto chiuso, fuori periodo o mese del progetto bloccato'); END");
         st.execute("DROP TRIGGER IF EXISTS project_entries_update");
         st.execute("CREATE TRIGGER project_entries_update BEFORE UPDATE OF work_date,activity_id,hours,note,source_ref ON entries WHEN (COALESCE(OLD.category_snapshot,(SELECT category FROM activities WHERE id=OLD.activity_id)) IN (SELECT name FROM categories WHERE kind='PROGETTI') AND (EXISTS(SELECT 1 FROM project_details p WHERE p.activity_id=OLD.activity_id AND p.closed=1) OR EXISTS(SELECT 1 FROM project_month_locks l WHERE l.activity_id=OLD.activity_id AND l.year=CAST(substr(OLD.work_date,1,4) AS INTEGER) AND l.month=CAST(substr(OLD.work_date,6,2) AS INTEGER)))) OR (COALESCE(NEW.category_snapshot,(SELECT category FROM activities WHERE id=NEW.activity_id)) IN (SELECT name FROM categories WHERE kind='PROGETTI') AND (EXISTS(SELECT 1 FROM project_details p WHERE p.activity_id=NEW.activity_id AND (p.closed=1 OR (p.start_date IS NOT NULL AND NEW.work_date<p.start_date) OR (p.end_date IS NOT NULL AND NEW.work_date>p.end_date))) OR EXISTS(SELECT 1 FROM project_month_locks l WHERE l.activity_id=NEW.activity_id AND l.year=CAST(substr(NEW.work_date,1,4) AS INTEGER) AND l.month=CAST(substr(NEW.work_date,6,2) AS INTEGER)))) BEGIN SELECT RAISE(ABORT,'Progetto chiuso o mese del progetto bloccato'); END");
@@ -2056,6 +2156,17 @@ public final class App extends JFrame {
         db.commit();
       }catch(SQLException|RuntimeException ex){db.rollback();throw ex;}finally{db.setAutoCommit(true);}
     }
+    Set<Integer> getArchivedActivityIds() throws SQLException{
+      Set<Integer> ids=new HashSet<>();
+      try(Statement s=db.createStatement();ResultSet r=s.executeQuery("SELECT id FROM activities WHERE archived_at IS NOT NULL")){
+        while(r.next())ids.add(r.getInt(1));
+      }return ids;
+    }
+    void setActivityArchived(int id,boolean archived) throws SQLException{
+      try(PreparedStatement p=db.prepareStatement("UPDATE activities SET archived_at="+(archived?"CURRENT_TIMESTAMP":"NULL")+" WHERE id=?")){
+        p.setInt(1,id);if(p.executeUpdate()!=1)throw new IllegalArgumentException("Attività non trovata.");
+      }
+    }
     List<Activity> getActivities() throws SQLException{List<Activity> result=new ArrayList<>();try(Statement s=db.createStatement();ResultSet r=s.executeQuery("SELECT id,name,category,color FROM activities ORDER BY name COLLATE NOCASE")){while(r.next())result.add(new Activity(r.getInt(1),r.getString(2),r.getString(3),r.getString(4)));}return result;}
     List<LogEntry> getLogs(int year) throws SQLException {
       List<LogEntry> list=new ArrayList<>();String sql="SELECT e.id,e.work_date,a.id,a.name,COALESCE(e.category_snapshot,a.category),a.color,e.hours,e.note,e.source_ref FROM entries e JOIN activities a ON e.activity_id=a.id WHERE e.work_date >= ? AND e.work_date < ? ORDER BY e.work_date,e.id";
@@ -2077,6 +2188,7 @@ public final class App extends JFrame {
       if(!categoryExists(category))throw new IllegalArgumentException("Categoria non riconosciuta.");
       if(name.isBlank())throw new IllegalArgumentException("Attività obbligatoria.");
       int existingId=findActivity(name);
+      if(existingId>=0&&getArchivedActivityIds().contains(existingId))throw new IllegalArgumentException("Attività archiviata: ripristinala da Archivio attività.");
       if(existingId>=0){
         try(PreparedStatement p=db.prepareStatement("SELECT category FROM activities WHERE id=?")){
           p.setInt(1,existingId);try(ResultSet r=p.executeQuery()){
@@ -2116,6 +2228,7 @@ public final class App extends JFrame {
       if(!categoryExists(category))throw new IllegalArgumentException("Categoria non riconosciuta.");
       db.setAutoCommit(false);try{
         int act=findActivity(name);
+        if(act>=0&&getArchivedActivityIds().contains(act)&&id==null)throw new IllegalArgumentException("Attività archiviata: ripristinala prima di inserire nuove ore.");
         if(act<0){try(PreparedStatement p=db.prepareStatement("INSERT INTO activities(name,category,color) VALUES(?,?,?)",Statement.RETURN_GENERATED_KEYS)){
           p.setString(1,name);p.setString(2,category);p.setString(3,nextColor());p.executeUpdate();act=findActivity(name);if(act<0)throw new SQLException("Impossibile creare l'attività.");
 }
@@ -2217,7 +2330,29 @@ public final class App extends JFrame {
     List<NoteRow> getNotes() throws SQLException{List<NoteRow> notes=new ArrayList<>();try(Statement s=db.createStatement();ResultSet r=s.executeQuery("SELECT id,note FROM notes ORDER BY id")){while(r.next())notes.add(new NoteRow(r.getInt(1),r.getString(2)));}return notes;}
     void saveNote(Integer id,String text) throws SQLException{if(id==null){try(PreparedStatement p=db.prepareStatement("INSERT INTO notes(note) VALUES(?)")){p.setString(1,text);p.executeUpdate();}}else{try(PreparedStatement p=db.prepareStatement("UPDATE notes SET note=? WHERE id=?")){p.setString(1,text);p.setInt(2,id);p.executeUpdate();}}}
     void deleteNote(int id) throws SQLException{try(PreparedStatement p=db.prepareStatement("DELETE FROM notes WHERE id=?")){p.setInt(1,id);p.executeUpdate();}}
-    void deleteActivity(int id) throws SQLException{try(PreparedStatement p=db.prepareStatement("DELETE FROM activities WHERE id=?")){p.setInt(1,id);p.executeUpdate();}}
+    void deleteActivity(int id) throws SQLException{
+      // Non eliminare mai per cascata ore, timesheet, persone o allegati.
+      for(String query:new String[]{
+        "SELECT 1 FROM entries WHERE activity_id=? LIMIT 1",
+        "SELECT 1 FROM project_people WHERE activity_id=? LIMIT 1",
+        "SELECT 1 FROM project_documents WHERE activity_id=? LIMIT 1",
+        "SELECT 1 FROM project_month_locks WHERE activity_id=? LIMIT 1"
+      })try(PreparedStatement p=db.prepareStatement(query)){
+        p.setInt(1,id);try(ResultSet r=p.executeQuery()){
+          if(r.next())throw new IllegalArgumentException("L'attività contiene dati storici o collegati: non può essere eliminata. Utilizza Archivia.");
+        }
+      }
+      // Se non vi sono ore/allegati/colleghi, i soli dati anagrafici sono eliminabili.
+      db.setAutoCommit(false);
+      try{
+        try(PreparedStatement p=db.prepareStatement("DELETE FROM project_details WHERE activity_id=?")){p.setInt(1,id);p.executeUpdate();}
+        try(PreparedStatement p=db.prepareStatement("DELETE FROM activities WHERE id=?")){
+          p.setInt(1,id);if(p.executeUpdate()!=1)throw new IllegalArgumentException("Attività inesistente.");
+        }
+        db.commit();
+      }catch(SQLException|RuntimeException e){db.rollback();throw e;}
+      finally{db.setAutoCommit(true);}
+    }
     void addSuspension(LocalDate date,String reason) throws SQLException{try(PreparedStatement p=db.prepareStatement("INSERT INTO suspensions(work_date,reason) VALUES(?,?) ON CONFLICT(work_date) DO UPDATE SET reason=excluded.reason")){p.setString(1,date.toString());p.setString(2,reason.trim().isEmpty()?"Sospensione didattica":reason.trim());p.executeUpdate();}}
     void addSuspensionRange(LocalDate from,LocalDate to,String reason) throws SQLException {
       db.setAutoCommit(false);try {
@@ -2239,6 +2374,40 @@ public final class App extends JFrame {
       String sql="SELECT activity_id,type,funder,project_code,project_role,start_year,start_month,end_year,end_month,notes,start_date,end_date,closed FROM project_details WHERE activity_id=?";
       try(PreparedStatement p=db.prepareStatement(sql)){p.setInt(1,activityId);try(ResultSet r=p.executeQuery()){if(r.next())return new ProjectDetails(r.getInt(1),r.getString(2),r.getString(3),r.getString(4),r.getString(5),getNullableInt(r,6),getNullableInt(r,7),getNullableInt(r,8),getNullableInt(r,9),r.getString(10),parseNullableIso(r.getString(11)),parseNullableIso(r.getString(12)),r.getInt(13)!=0);}}
       return new ProjectDetails(activityId,"","","","",null,null,null,null,"",null,null,false);
+    }
+    boolean hasLockedEntries(int id) throws SQLException {
+      try(PreparedStatement p=db.prepareStatement("SELECT 1 FROM entries e WHERE e.activity_id=? AND ("+
+        "EXISTS(SELECT 1 FROM month_locks m WHERE m.year=CAST(substr(e.work_date,1,4) AS INTEGER) AND m.month=CAST(substr(e.work_date,6,2) AS INTEGER)) " +
+        "OR EXISTS(SELECT 1 FROM project_month_locks l WHERE l.activity_id=e.activity_id AND l.year=CAST(substr(e.work_date,1,4) AS INTEGER) AND l.month=CAST(substr(e.work_date,6,2) AS INTEGER)) " +
+        "OR EXISTS(SELECT 1 FROM project_details d WHERE d.activity_id=e.activity_id AND d.closed=1)) LIMIT 1")){
+        p.setInt(1,id);try(ResultSet r=p.executeQuery()){return r.next();}
+      }
+    }
+    ProjectBrand projectBrand(int activityId) throws SQLException {
+      try(PreparedStatement p=db.prepareStatement("SELECT funding_label,acronym,full_name FROM project_details WHERE activity_id=?")){
+        p.setInt(1,activityId);try(ResultSet r=p.executeQuery()){
+          if(r.next())return new ProjectBrand(r.getString(1),r.getString(2),r.getString(3));
+        }
+      }
+      return new ProjectBrand("","","");
+    }
+    void saveProjectProfile(ProjectDetails details,String activityName,String funding,String acronym,String fullName) throws SQLException {
+      if(activityName==null||activityName.isBlank()||acronym==null||acronym.isBlank()||fullName==null||fullName.isBlank())
+        throw new IllegalArgumentException("Nome attività, acronimo e denominazione completa sono obbligatori.");
+      db.setAutoCommit(false);
+      try{
+        saveProjectDetails(details);
+        try(PreparedStatement p=db.prepareStatement("UPDATE activities SET name=? WHERE id=?")){
+          p.setString(1,activityName.trim());p.setInt(2,details.activityId());
+          if(p.executeUpdate()!=1)throw new SQLException("Attività progetto inesistente.");
+        }
+        try(PreparedStatement p=db.prepareStatement("UPDATE project_details SET funding_label=?,acronym=?,full_name=? WHERE activity_id=?")){
+          p.setString(1,funding==null?"":funding.trim());p.setString(2,acronym.trim());p.setString(3,fullName.trim());p.setInt(4,details.activityId());
+          if(p.executeUpdate()!=1)throw new SQLException("Salvataggio denominazione progetto non riuscito.");
+        }
+        db.commit();
+      }catch(SQLException|RuntimeException e){db.rollback();throw e;}
+      finally{db.setAutoCommit(true);}
     }
     private static LocalDate parseNullableIso(String s){return s==null||s.isBlank()?null:LocalDate.parse(s);}
     private static Integer getNullableInt(ResultSet r,int idx) throws SQLException{int v=r.getInt(idx);return r.wasNull()?null:v;}

@@ -1,4 +1,4 @@
-# FAQ — Registro Ore 3.10.2
+# FAQ — Registro Ore 3.10.3
 
 **Dove si trovano le ore?** Nel database SQLite locale. Il percorso effettivo è visualizzato in basso a sinistra e in **Sistema → Stato database**.
 
@@ -21,3 +21,11 @@
 **Posso usare il codice per creare una versione mia?** Sì. Il codice originale è distribuito con [licenza MIT](../LICENSE): puoi usarlo, modificarlo e redistribuirlo, mantenendo la nota di copyright e il testo della licenza. Le dipendenze di terze parti hanno licenze proprie.
 
 **Segnalazione bug:** usare le GitHub Issues senza inserire dati personali o documenti dei progetti.
+
+### Posso nascondere un progetto concluso senza perdere documenti e rendicontazioni?
+
+Sì: usare **Gestione → Attività → Archivia**. L'archiviazione è esplicita e reversibile; le ore storiche rimangono nei riepiloghi e gli allegati nel database. Per consultare o ripristinare l'attività usare **Gestione → Archivio attività**. La chiusura del progetto è un blocco contabile separato.
+
+### Posso eliminare un progetto che contiene ore o allegati?
+
+No. Per proteggere timesheet e documenti, l'eliminazione definitiva è consentita soltanto quando non esistono dati collegati. Utilizzare l'archiviazione negli altri casi.

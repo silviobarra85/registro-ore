@@ -24,7 +24,7 @@ Per avviare localmente il JAR serve un database inizializzato, per esempio una *
 ```bash
 mkdir -p data
 cp database_vuoto.sqlite data/registro_ore_2026.sqlite
-java -Dregistro.db="$(pwd)/data/registro_ore_2026.sqlite" -jar target/registro-ore-3.10.2.jar
+java -Dregistro.db="$(pwd)/data/registro_ore_2026.sqlite" -jar target/registro-ore-3.10.3.jar
 ```
 
 > L'app può aggiornare lo schema SQL al primo avvio: non puntare mai un esperimento al database personale.
@@ -49,3 +49,9 @@ Si trovano in `pom.xml`. Prima della distribuzione estesa valutare aggiornamenti
 ## Licenza del progetto
 
 Il codice originale di Registro Ore è distribuito con licenza MIT (vedere [`LICENSE`](../LICENSE)). Le dipendenze esterne elencate in `pom.xml` e i relativi componenti redistribuiti hanno licenze proprie, che devono essere rispettate in fase di packaging.
+
+## Migrazione anagrafica 3.10.3
+
+La migrazione aggiunge `activities.archived_at` e le colonne `project_details.funding_label`, `project_details.acronym`, `project_details.full_name` con `ALTER TABLE` (senza ricreare le tabelle). Viene creato un backup prima dell'introduzione dell'archivio. I trigger `archived_entry_insert` e `archived_team_insert` impediscono nuove registrazioni sui progetti archiviati. L'eliminazione passa da un controllo esplicito sulle tabelle collegate.
+
+Per la compatibilità con i timesheet già bloccati, modificare il nome anagrafico è permesso con avviso; non viene alterato nessun valore numerico delle registrazioni.
