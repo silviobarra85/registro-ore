@@ -24,7 +24,7 @@ Per avviare localmente il JAR serve un database inizializzato, per esempio una *
 ```bash
 mkdir -p data
 cp database_vuoto.sqlite data/registro_ore_2026.sqlite
-java -Dregistro.db="$(pwd)/data/registro_ore_2026.sqlite" -jar target/registro-ore-3.10.3.jar
+java -Dregistro.db="$(pwd)/data/registro_ore_2026.sqlite" -jar target/registro-ore-3.11.0.jar
 ```
 
 > L'app può aggiornare lo schema SQL al primo avvio: non puntare mai un esperimento al database personale.
@@ -50,8 +50,14 @@ Si trovano in `pom.xml`. Prima della distribuzione estesa valutare aggiornamenti
 
 Il codice originale di Registro Ore è distribuito con licenza MIT (vedere [`LICENSE`](../LICENSE)). Le dipendenze esterne elencate in `pom.xml` e i relativi componenti redistribuiti hanno licenze proprie, che devono essere rispettate in fase di packaging.
 
-## Migrazione anagrafica 3.10.3
+## Migrazione anagrafica 3.11.0
 
 La migrazione aggiunge `activities.archived_at` e le colonne `project_details.funding_label`, `project_details.acronym`, `project_details.full_name` con `ALTER TABLE` (senza ricreare le tabelle). Viene creato un backup prima dell'introduzione dell'archivio. I trigger `archived_entry_insert` e `archived_team_insert` impediscono nuove registrazioni sui progetti archiviati. L'eliminazione passa da un controllo esplicito sulle tabelle collegate.
 
 Per la compatibilità con i timesheet già bloccati, modificare il nome anagrafico è permesso con avviso; non viene alterato nessun valore numerico delle registrazioni.
+
+## Migrazione 3.11.0
+
+Il codice `CategoryTaxonomy.java` contiene le nove categorie, i tre livelli di controllo durante le sospensioni e la mappatura prudente delle vecchie denominazioni. `Store.migrateCategoriesV311()` crea il backup iniziale, conserva la precedente classificazione in `activities.legacy_category_v311` e `entries.legacy_category_v311`, salva le mappature in `legacy_category_mapping`, poi applica le categorie canoniche senza alterare i valori numerici delle ore. La migrazione è marcata in `app_metadata` e non deve essere riapplicata ai dati già convertiti. `Store.migrateMissionsV311()` aggiunge `missions`, `mission_documents` e `entries.mission_id` con controlli sul periodo e sui mesi bloccati.
+
+Sono presenti `CategoryTaxonomyTest`, `RegistroViewportTest` e `ProjectIdentityTest` come test Java semplici. Oltre alla compilazione, prima di una Release stabile occorre eseguire test di integrazione JDBC con le dipendenze reali e collaudo grafico su tutti i sistemi operativi.

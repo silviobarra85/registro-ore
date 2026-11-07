@@ -22,7 +22,7 @@ import java.awt.datatransfer.StringSelection;
 
 /** Registro ore accademico multiannuale. Desktop Swing + SQLite su file. */
 public final class App extends JFrame {
-  private static final String VERSION = "3.10.3";
+  private static final String VERSION = "3.11.0";
   private static final int DEFAULT_YEAR = 2026;
   private static final double YEAR_LIMIT = 1500.0;
   private static final String UNSET_ROLE = "Da impostare";
@@ -120,12 +120,13 @@ public final class App extends JFrame {
   private Set<Integer> archivedIds=Set.of();
   private static final Preferences FILE_PREFERENCES=Preferences.userNodeForPackage(App.class).node("documenti");
   private List<LogEntry> logs = List.of();
+  private List<Mission> missions = List.of();
   private Map<LocalDate,List<LogEntry>> byDate = Map.of();
   private Map<LocalDate,String> suspensions = Map.of();
 
   record Activity(int id, String name, String category, String color) { }
   record Category(String name,String kind,boolean system) { }
-  record LogEntry(int id, LocalDate date, Activity activity, Double hours, String note, String source) { }
+  record LogEntry(int id, LocalDate date, Activity activity, Double hours, String note, String source, Integer missionId) { }
   record CalendarRow(LocalDate date, LogEntry entry) { }
   record NoteRow(int id, String text) { }
   record SummaryRow(String label, double[] months, int kind) { }
@@ -134,6 +135,13 @@ public final class App extends JFrame {
   record ProfileInfo(String name, String defaultRole) { }
   record ProjectHistory(String project, int year, double hours, String role, double cost) { }
   record ProjectBrand(String funding,String acronym,String fullName) { }
+  record Mission(int id,String title,String type,String role,String location,LocalDate from,LocalDate to,
+                 String conference,String paper,String doi,Integer projectId,String authorization,String notes) {
+    @Override public String toString(){return title+" ("+from.format(DISPLAY)+" - "+to.format(DISPLAY)+")";}
+  }
+  record MissionDocument(int id,String filename,long size) { }
+  record MissionChoice(Integer id,String text) { @Override public String toString(){return text;} }
+  record LegacyMapping(String oldCategory,String newCategory,boolean review) { }
   record ProjectDetails(int activityId,String type,String funder,String code,String projectRole,Integer startYear,Integer startMonth,Integer endYear,Integer endMonth,String notes,LocalDate startDate,LocalDate endDate,boolean closed) { }
   record ProjectMonthLock(int activityId,int year,int month,String reason) { }
   record ProjectPerson(int id,int activityId,String name,String qualification,String projectRole,String notes) { }
@@ -182,6 +190,8 @@ public final class App extends JFrame {
     root.setBackground(BG); add(root);
     store.migrate();
     store.enableOrdinaryKind();
+    store.migrateCategoriesV311();
+    store.migrateMissionsV311();
     store.installSaveTracking();
     store.installAuditTracking();
     dailyBackupExecutor=Executors.newSingleThreadScheduledExecutor(r->{Thread t=new Thread(r,"backup-giornalieri");t.setDaemon(true);return t;});
@@ -201,8 +211,8 @@ public final class App extends JFrame {
   private void initNavigationSections(){
     if(!sectionPages.isEmpty())return;
     sectionPages.put("CALENDARIO E REGISTRO",List.of("Calendario","Registro","Cerca","Riepilogo"));
-    sectionPages.put("RENDICONTAZIONE",List.of("Progetti","Attività Ordinaria","Didattica Frontale","Didattica Integrativa"));
-    sectionPages.put("GESTIONE",List.of("Attività","Archivio attività","Categorie","Sospensioni","Annualità","Profilo","Note"));
+    sectionPages.put("RENDICONTAZIONE",List.of(CategoryTaxonomy.names()));
+    sectionPages.put("GESTIONE",List.of("Attività","Archivio attività","Categorie","Guida alle categorie","Missioni","Sospensioni","Annualità","Profilo","Note"));
     sectionPages.put("SCHEDE PROGETTO",List.of());
     sectionPages.put("SISTEMA",List.of("Backup e ripristino","Storico modifiche","Stato database","Esporta CSV / Excel","Salva copia database"));
     for(String key:sectionPages.keySet())openNavigationSections.putIfAbsent(key,
@@ -298,7 +308,8 @@ public final class App extends JFrame {
         sections.add(header);
         if(open){
           List<String> items=sectionPages.get(group);
-          for(String title:items){JButton btn=sidebarButton(title,true);btn.setMaximumSize(new Dimension(249,34));
+          for(String title:items){JButton btn=sidebarButton(sidebarCategoryLabel(title),true);btn.setMaximumSize(new Dimension(249,34));
+            btn.setToolTipText(title);
             btn.setBorder(new EmptyBorder(8,30,8,6));btn.addActionListener(e->navClick(title));
             boolean active=page.equals(title);btn.setBackground(active?ORANGE:NAVY);btn.setForeground(active?NAVY:WHITE);
             sections.add(btn);navigation.put(title,btn);
@@ -351,6 +362,14 @@ public final class App extends JFrame {
       JMenuItem item=new JMenuItem(title);item.addActionListener(e->navClick(title));menu.add(item);
     }
     return menu;
+  }
+  private static String sidebarCategoryLabel(String title){
+    if(title.equals(CategoryTaxonomy.INTEGRATIVE))return "Didattica integrativa";
+    if(title.equals(CategoryTaxonomy.FUNDED))return "Progetti finanziati";
+    if(title.equals(CategoryTaxonomy.ADMIN))return "Attività istituzionali";
+    if(title.equals(CategoryTaxonomy.THIRD))return "Terza missione";
+    if(title.equals(CategoryTaxonomy.TRAINING))return "Formazione e aggiornamento";
+    return title;
   }
   private JButton sidebarButton(String title,boolean compact){
     JButton btn=new JButton(title);btn.setForeground(WHITE);btn.setBackground(NAVY);
@@ -438,7 +457,7 @@ public final class App extends JFrame {
     }catch(Exception ex){error(ex);}}
   }
   private void reload() throws SQLException {
-    categories=store.getCategories();activities=store.getActivities();projectHistoryIds=store.projectHistoryIds();archivedIds=store.getArchivedActivityIds();logs=store.getLogs(selectedYear);suspensions=store.getSuspensions(selectedYear);annual=store.getAnnual(selectedYear);
+    categories=store.getCategories();activities=store.getActivities();projectHistoryIds=store.projectHistoryIds();archivedIds=store.getArchivedActivityIds();logs=store.getLogs(selectedYear);missions=store.getMissions();suspensions=store.getSuspensions(selectedYear);annual=store.getAnnual(selectedYear);
     refreshProfileHeader();updateLastSave();
     Map<LocalDate,List<LogEntry>> index=new HashMap<>();for(LogEntry e:logs)index.computeIfAbsent(e.date(), k->new ArrayList<>()).add(e);byDate=index;
   }
@@ -448,10 +467,25 @@ public final class App extends JFrame {
     catch(Exception ex){error(ex);}
   }
   private void showPage(String name){
-    page=name;pageTitle.setText(switch(name){case "Calendario"->"Panoramica annuale";case "Registro"->"Registro mensile";case "Cerca"->"Ricerca registrazioni";case "Riepilogo"->"Riepilogo delle ore";case "Progetti"->"Progetti e valorizzazione";case "Didattica Frontale"->"Didattica frontale";case "Didattica Integrativa"->"Didattica integrativa";case "Attività"->"Anagrafica delle attività";case "Archivio attività"->"Archivio delle attività";case "Categorie"->"Gestione delle categorie";case "Sospensioni"->"Giorni di sospensione";case "Annualità"->"Annualità e mesi bloccati";case "Profilo"->"Profilo docente e costo orario";case "Scheda progetto"->"Scheda del progetto";case "Backup e ripristino"->"Backup automatici e ripristino";case "Storico modifiche"->"Cronologia delle modifiche";case "Attività Ordinaria"->"Attività ordinaria";default->"Note e promemoria";});
+    page=name;
+    pageTitle.setText(CategoryTaxonomy.rule(name)!=null?name:switch(name){
+      case "Calendario"->"Panoramica annuale";case "Registro"->"Registro mensile";case "Cerca"->"Ricerca registrazioni";
+      case "Riepilogo"->"Riepilogo delle ore";case "Attività"->"Anagrafica delle attività";
+      case "Archivio attività"->"Archivio delle attività";case "Categorie"->"Le nove categorie";
+      case "Guida alle categorie"->"Guida alle categorie";case "Missioni"->"Missioni scientifiche e istituzionali";
+      case "Sospensioni"->"Giorni di sospensione";case "Annualità"->"Annualità e mesi bloccati";
+      case "Profilo"->"Profilo docente e costo orario";case "Scheda progetto"->"Scheda del progetto";
+      case "Backup e ripristino"->"Backup automatici e ripristino";
+      case "Storico modifiche"->"Cronologia delle modifiche";default->"Note e promemoria";});
     for(var n:navigation.entrySet()){boolean active=n.getKey().equals(name);n.getValue().setBackground(active?ORANGE:NAVY);n.getValue().setForeground(active?NAVY:WHITE);}
     if(name.equals("Scheda progetto")){Activity activeProject=activities.stream().filter(a->a.id()==selectedProjectId).findFirst().orElse(null);if(activeProject!=null)pageTitle.setText(projectNavLabel(activeProject));refreshSidebar();}
-    JPanel current=switch(name){case "Calendario"->calendar();case "Registro"->register();case "Cerca"->searchPage();case "Riepilogo"->summary();case "Progetti"->categorySummary("PROGETTI",true);case "Attività Ordinaria"->categorySummary(GROUPS[4],false);case "Backup e ripristino"->backupsPanel();case "Storico modifiche"->auditPanel();case "Didattica Frontale"->categorySummary(GROUPS[0],false);case "Didattica Integrativa"->categorySummary(GROUPS[1],false);case "Attività"->activityPanel();case "Archivio attività"->archivePanel();case "Categorie"->categoryPanel();case "Sospensioni"->holidayPanel();case "Annualità"->annualPanel();case "Profilo"->profilePanel();case "Scheda progetto"->projectPage();default->notesPanel();};
+    JPanel current=CategoryTaxonomy.rule(name)!=null?categorySummary(name,CategoryTaxonomy.FUNDED.equals(name)):
+      switch(name){case "Calendario"->calendar();case "Registro"->register();case "Cerca"->searchPage();
+        case "Riepilogo"->summary();case "Backup e ripristino"->backupsPanel();case "Storico modifiche"->auditPanel();
+        case "Attività"->activityPanel();case "Archivio attività"->archivePanel();case "Categorie"->categoryPanel();
+        case "Guida alle categorie"->categoryGuidePanel();case "Missioni"->missionsPanel();
+        case "Sospensioni"->holidayPanel();case "Annualità"->annualPanel();case "Profilo"->profilePanel();
+        case "Scheda progetto"->projectPage();default->notesPanel();};
     body.removeAll();body.add(current,BorderLayout.CENTER);body.revalidate();body.repaint();
   }
   private static JPanel panel(LayoutManager layout) {JPanel p=new JPanel(layout);p.setBackground(BG);return p;}
@@ -463,14 +497,33 @@ public final class App extends JFrame {
   private static String fmt(double value){return fmt(Double.valueOf(value));}
   private static boolean weekend(LocalDate d){return d.getDayOfWeek().getValue()>=6;}
   private boolean blocked(LocalDate d){return weekend(d)||suspensions.containsKey(d);}
+  private boolean validateSuspension(String category,Collection<LocalDate> dates,String note){
+    var rule=CategoryTaxonomy.rule(category);
+    if(rule==null)return true;
+    List<LocalDate> blockedDays=dates.stream().filter(this::blocked).sorted().toList();
+    if(blockedDays.isEmpty())return true;
+    if(rule.suspension()==CategoryTaxonomy.Suspension.ALLOW)return true;
+    if(rule.suspension()==CategoryTaxonomy.Suspension.BLOCK){
+      if(note.isBlank()){JOptionPane.showMessageDialog(this,
+        "Didattica frontale durante sospensione/weekend: per una deroga documentata inserisci una motivazione nelle note.");return false;}
+      return ask("Attenzione: "+blockedDays.size()+" giornate senza lezioni (es. "+blockedDays.get(0).format(DISPLAY)+").\n"+
+        "La didattica frontale e' normalmente sospesa. Confermi una deroga autorizzata?\n"+
+        "Motivazione: "+note+"\nLa motivazione sara' registrata.");
+    }
+    if(note.isBlank()){JOptionPane.showMessageDialog(this,
+      "Per una commissione, didattica integrativa o altra attivita' in sospensione, specifica nelle note la prestazione svolta e perche' era consentita.");return false;}
+    return ask("Verifica richiesta: "+blockedDays.size()+" date durante sospensione/weekend.\n"+
+      "Confermi che l'attivita' e' stata effettivamente svolta ed era consentita?\n"+note);
+  }
+
   private double totalOf(List<LogEntry> list){return list.stream().filter(e->e.hours()!=null).mapToDouble(e->e.hours()).sum();}
   private static String esc(String text){return text==null?"":text.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;");}
 
   private JPanel calendar() {
     JPanel container=panel(new BorderLayout(0,17));container.setBorder(new EmptyBorder(22,27,24,26));
     JPanel tiles=panel(new GridLayout(1,5,13,0));double total=totalOf(logs);int days=(int)logs.stream().filter(e->e.hours()!=null).map(LogEntry::date).distinct().count();
-    double front=sumGroup("DIDATTICA FRONTALE"), integ=sumGroup("DIDATTICA INTEGRATIVA"), ordinary=sumGroup("ATTIVITÀ ORDINARIA"), projects=sumGroup("PROGETTI");
-    tiles.add(kpi("ORE TOTALI",fmt(total),"Anno " + selectedYear));tiles.add(kpi("DISPONIBILI",fmt(Math.max(0,YEAR_LIMIT-total)),"Limite " + fmt(YEAR_LIMIT) + " h"));tiles.add(kpi("DIDATTICA",fmt(front+integ+ordinary),"Frontale + integrativa + ordinaria"));
+    double front=sumGroup("DIDATTICA FRONTALE"), integ=sumGroup("DIDATTICA INTEGRATIVA"), projects=sumGroup("PROGETTI");
+    tiles.add(kpi("ORE TOTALI",fmt(total),"Anno " + selectedYear));tiles.add(kpi("DISPONIBILI",fmt(Math.max(0,YEAR_LIMIT-total)),"Limite " + fmt(YEAR_LIMIT) + " h"));tiles.add(kpi("DIDATTICA",fmt(front+integ),"Frontale + integrativa"));
     tiles.add(kpi("PROGETTI",fmt(projects),"Ore di ricerca e progetti"));tiles.add(kpi("GIORNI REGISTRATI",Integer.toString(days),"Almeno una voce con ore"));
     JPanel calendarHeader=panel(new BorderLayout(0,9));calendarHeader.add(tiles,BorderLayout.NORTH);
     long overtime=byDate.entrySet().stream().filter(x->totalOf(x.getValue())>8.000001).count();
@@ -552,7 +605,9 @@ public final class App extends JFrame {
         String restriction="";try{restriction=store.entryRestriction(entry.activity().id(),entry.date(),entry.activity().category());}catch(SQLException ex){restriction="Verifica blocco non riuscita: "+ex.getMessage();}
         final String lockReason=restriction;
         String suffix=lockReason.isBlank()?"":"   🔒 NON MODIFICABILE — "+lockReason;
-        JLabel description=label(activityName+"   •   "+entry.activity().category()+(entry.note().isBlank()?"":"   —   "+entry.note())+suffix,12,false);
+        String missionTag=entry.missionId()==null?"":missions.stream().filter(m->m.id()==entry.missionId()).findFirst()
+            .map(m->"   •   Missione: "+m.title()).orElse("   •   Missione collegata");
+        JLabel description=label(activityName+"   •   "+entry.activity().category()+(entry.note().isBlank()?"":"   —   "+entry.note())+missionTag+suffix,12,false);
         description.setToolTipText(lockReason.isBlank()?activityName+" "+entry.note():"Blocco modifica: "+lockReason);
         if(!lockReason.isBlank()){row.setBackground(new Color(255,238,236));description.setForeground(new Color(157,35,48));}
         row.add(description,BorderLayout.CENTER);
@@ -595,7 +650,12 @@ public final class App extends JFrame {
     JPanel activitySearch=installActivitySuggestions(a,group);
     JTextField hours=new JTextField(existing!=null?fmt(existing.hours()).replace("—",""):"",16);
     JTextField note=new JTextField(existing==null?"":existing.note(),22);
-    field(content,gbc,"Data (gg/mm/aaaa)",day);field(content,gbc,"Attività (anche nuova)",activitySearch);field(content,gbc,"Categoria per nuova attività",group);field(content,gbc,"Ore (es. 2 o 1,5)",hours);field(content,gbc,"Note facoltative",note);
+    JComboBox<MissionChoice> mission=new JComboBox<>(missionChoices());
+    if(existing!=null&&existing.missionId()!=null)selectMission(mission,existing.missionId());
+    mission.setPreferredSize(new Dimension(340,32));
+    field(content,gbc,"Data (gg/mm/aaaa)",day);field(content,gbc,"Attività (anche nuova)",activitySearch);
+    field(content,gbc,"Categoria per nuova attività",group);field(content,gbc,"Ore (es. 2 o 1,5)",hours);
+    field(content,gbc,"Missione (facoltativa)",mission);field(content,gbc,"Note facoltative",note);
     for(;;){int answer=JOptionPane.showConfirmDialog(this,content,existing==null?"Nuova registrazione":"Modifica registrazione",JOptionPane.OK_CANCEL_OPTION,JOptionPane.PLAIN_MESSAGE);if(answer!=JOptionPane.OK_OPTION)return;
       try {
         LocalDate d=LocalDate.parse(day.getText().trim(),INPUT);if(d.getYear()!=selectedYear)throw new IllegalArgumentException("Usa una data dell’annualità selezionata: "+selectedYear);
@@ -605,9 +665,10 @@ public final class App extends JFrame {
         Activity known=activities.stream().filter(x->x.name().equalsIgnoreCase(name)).findFirst().orElse(null);
         if(known!=null&&archivedIds.contains(known.id()))throw new IllegalArgumentException("Questa attività è archiviata. Ripristinala da Gestione → Archivio attività prima di inserire nuove ore.");
         String category=known==null?(String)group.getSelectedItem():known.category();
-        if(n!=null&&isTeaching(category)&&blocked(d)){
-          throw new IllegalArgumentException("Il giorno " + d.format(DISPLAY)+" è sospeso o è un weekend.\nNon si possono registrare ore di didattica; sono consentite ore sui progetti.");}
-        store.saveEntry(existing==null?null:existing.id(),d,name,category,n,note.getText().trim());chosen=d;changed();return;
+        if(n!=null&&!validateSuspension(category,List.of(d),note.getText().trim()))continue;
+        MissionChoice selectedMission=(MissionChoice)mission.getSelectedItem();
+        store.saveEntry(existing==null?null:existing.id(),d,name,category,n,note.getText().trim(),
+          selectedMission==null?null:selectedMission.id());chosen=d;changed();return;
       }catch(Exception e){error(e);}
     }
   }
@@ -620,12 +681,13 @@ public final class App extends JFrame {
     JTextField activityName=new JTextField(24);activityName.setPreferredSize(new Dimension(325,31));
     JComboBox<String> category=new JComboBox<>(categoryNames());category.setPreferredSize(new Dimension(285,32));
     JTextField hours=new JTextField("2",9),notes=new JTextField(23);
+    JComboBox<MissionChoice> mission=new JComboBox<>(missionChoices());
     JPanel inputs=new JPanel(new GridBagLayout());inputs.setBackground(BG);
     GridBagConstraints gc=new GridBagConstraints();gc.gridx=0;gc.gridy=0;gc.insets=new Insets(4,8,4,8);gc.anchor=GridBagConstraints.WEST;
     field(inputs,gc,"Attività",installActivitySuggestions(activityName,category));
     field(inputs,gc,"Categoria (solo per nuova attività)",category);
     field(inputs,gc,"Ore per ciascun giorno",hours);
-    field(inputs,gc,"Note (replicate sui giorni)",notes);
+    field(inputs,gc,"Note (replicate sui giorni)",notes);field(inputs,gc,"Missione (facoltativa)",mission);
     main.add(inputs,BorderLayout.NORTH);
     JPanel months=new JPanel(new GridLayout(0,3,11,11));months.setBackground(BG);
     JLabel counter=label("Selezionati: 0 giorni",13,true);
@@ -684,13 +746,14 @@ public final class App extends JFrame {
       if(!Double.isFinite(quantity)||quantity<=0||quantity>24)throw new IllegalArgumentException("Ore per giorno: inserisci un valore maggiore di 0 e non superiore a 24.");
       Activity known=activities.stream().filter(a->a.name().equalsIgnoreCase(name)).findFirst().orElse(null);
       String group=known==null?(String)category.getSelectedItem():known.category();
-      List<LocalDate> incompatible=selected.stream().filter(d->isTeaching(group)&&blocked(d)).toList();
-      if(!incompatible.isEmpty())throw new IllegalArgumentException("Sono selezionati "+incompatible.size()+" giorni senza didattica (es. "+incompatible.get(0).format(DISPLAY)+"). Deselezionali oppure scegli una attività non didattica.");
+      if(!validateSuspension(group,selected,notes.getText().trim()))return;
       long duplicates=selected.stream().filter(d->byDate.getOrDefault(d,List.of()).stream().anyMatch(a->a.activity().name().equalsIgnoreCase(name))).count();
       String confirmation="Registrare "+fmt(quantity)+" ore per "+selected.size()+" giorni ("+fmt(quantity*selected.size())+" ore complessive)?";
       if(duplicates>0)confirmation+="\nAttenzione: in "+duplicates+" date questa attività è già presente. Le nuove righe si aggiungono senza sostituire le precedenti.";
       if(!ask(confirmation))return;
-      store.saveEntriesBatch(selectedYear,new ArrayList<>(selected),name,group,quantity,notes.getText().trim());
+      MissionChoice selectedMission=(MissionChoice)mission.getSelectedItem();
+      store.saveEntriesBatch(selectedYear,new ArrayList<>(selected),name,group,quantity,notes.getText().trim(),
+        selectedMission==null?null:selectedMission.id());
       chosen=selected.first();dialog.dispose();changed();
       JOptionPane.showMessageDialog(this,"Registrazioni salvate correttamente: "+selected.size()+" giornate, "+fmt(quantity*selected.size())+" ore.");
     }catch(Exception ex){error(ex);}});
@@ -772,9 +835,9 @@ public final class App extends JFrame {
   }
   private static void field(JPanel p,GridBagConstraints c,String title,JComponent field){c.gridx=0;c.weightx=0;c.fill=GridBagConstraints.NONE;p.add(label(title,12,true),c);c.gridx=1;c.weightx=1;c.fill=GridBagConstraints.HORIZONTAL;p.add(field,c);c.gridy++;}
   private String categoryKind(String category){return categories.stream().filter(c->c.name().equals(category)).map(Category::kind).findFirst().orElse("ALTRE ATTIVITÀ");}
-  private boolean isTeaching(String category){String kind=categoryKind(category);return kind.equals(GROUPS[0])||kind.equals(GROUPS[1])||kind.equals(GROUPS[4]);}
+  private boolean isTeaching(String category){return CategoryTaxonomy.FRONT.equals(category);}
   private boolean isProject(String category){return categoryKind(category).equals(GROUPS[2]);}
-  private String[] categoryNames(){return categories.stream().map(Category::name).toArray(String[]::new);}
+  private String[] categoryNames(){return CategoryTaxonomy.names();}
   private double sumGroup(String kind){return logs.stream().filter(e->e.hours()!=null&&categoryKind(e.activity().category()).equals(kind)).mapToDouble(e->e.hours()).sum();}
 
 
@@ -876,7 +939,7 @@ public final class App extends JFrame {
       Color bgColor=item.kind()==1?NAVY:item.kind()==3?new Color(255,203,126):item.kind()==2?new Color(255,231,187):item.kind()==4?new Color(227,239,252):item.kind()==5?new Color(238,247,251):r%2==0?WHITE:new Color(247,250,253);
       setBackground(sel?SELECT_BG:bgColor);setForeground(sel||item.kind()==1?WHITE:INK);setFont(new Font("SansSerif",item.kind()==0?Font.PLAIN:Font.BOLD,12));setHorizontalAlignment(c==0?SwingConstants.LEFT:SwingConstants.RIGHT);return this;}});
     JScrollPane scroll=new JScrollPane(t);scroll.setBorder(new LineBorder(LINE));p.add(scroll,BorderLayout.CENTER);
-    p.add(label("Totale registrato: "+fmt(totalOf(logs))+" ore  •  Ogni attività appartiene a una sola categoria personalizzabile.",13,true),BorderLayout.SOUTH);return p;
+    p.add(label("Totale registrato: "+fmt(totalOf(logs))+" ore  •  Nove categorie con regole operative integrate.",13,true),BorderLayout.SOUTH);return p;
   }
 
   /** Scheda analitica della categoria: per progetti mostra anche la valorizzazione economica per anno. */
@@ -884,7 +947,8 @@ public final class App extends JFrame {
     JPanel p=panel(new BorderLayout(0,13));p.setBorder(new EmptyBorder(22,27,24,27));
     int roleRate=rate(annual.role());
     Map<String,double[]> byName=new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-    for(LogEntry l:logs)if(l.hours()!=null&&(categoryKind(l.activity().category()).equals(category)||(category.equals(GROUPS[4])&&(categoryKind(l.activity().category()).equals(GROUPS[0])||categoryKind(l.activity().category()).equals(GROUPS[1])))))byName.computeIfAbsent(l.activity().name(),k->new double[12])[l.date().getMonthValue()-1]+=l.hours();
+    for(LogEntry l:logs)if(l.hours()!=null&&l.activity().category().equals(category))
+      byName.computeIfAbsent(l.activity().name(),k->new double[12])[l.date().getMonthValue()-1]+=l.hours();
     double overall=byName.values().stream().mapToDouble(x->Arrays.stream(x).sum()).sum();
     Map<String,double[]> costByName=new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     for(LogEntry e:logs)if(e.hours()!=null&&isProject(e.activity().category()))
@@ -1366,53 +1430,177 @@ public final class App extends JFrame {
     return p;
   }
 
-  private JPanel categoryPanel(){
-    JPanel p=panel(new BorderLayout(0,13));p.setBorder(new EmptyBorder(22,27,24,27));
-    JPanel top=new JPanel(new BorderLayout());top.setOpaque(false);
-    top.add(label("Categorie libere: aggiungi, rinomina o elimina anche quelle iniziali. Ogni attività ha una sola categoria.",13,false),BorderLayout.WEST);
-    JPanel buttons=new JPanel(new FlowLayout(FlowLayout.RIGHT,8,0));buttons.setOpaque(false);
-    JButton add=action("+ Nuova categoria"),edit=subtle("Modifica"),remove=subtle("Elimina");
-    buttons.add(add);buttons.add(edit);buttons.add(remove);top.add(buttons,BorderLayout.EAST);p.add(top,BorderLayout.NORTH);
-    String[] cols={"Categoria","Regola operativa","Attività collegate"};
-    JTable t=makeTable(new AbstractTableModel(){public int getRowCount(){return categories.size();}public int getColumnCount(){return cols.length;}
-      public String getColumnName(int c){return cols[c];}
-      public Object getValueAt(int r,int c){Category cat=categories.get(r);return switch(c){case 0->cat.name();case 1->ruleLabel(cat.kind());default->activities.stream().filter(a->a.category().equalsIgnoreCase(cat.name())).count();};}});
-    t.setRowHeight(33);t.getColumnModel().getColumn(0).setPreferredWidth(350);t.getColumnModel().getColumn(1).setPreferredWidth(280);
+  private MissionChoice[] missionChoices(){
+    List<MissionChoice> options=new ArrayList<>();options.add(new MissionChoice(null,"— Nessuna missione —"));
+    for(Mission m:missions)options.add(new MissionChoice(m.id(),m.toString()));
+    return options.toArray(new MissionChoice[0]);
+  }
+  private static void selectMission(JComboBox<MissionChoice> box,Integer id){
+    for(int i=0;i<box.getItemCount();i++)if(Objects.equals(box.getItemAt(i).id(),id)){box.setSelectedIndex(i);return;}
+  }
+  private JPanel missionsPanel(){
+    JPanel p=panel(new BorderLayout(0,12));p.setBorder(new EmptyBorder(22,27,24,27));
+    JPanel top=panel(new BorderLayout());
+    top.add(label("Le missioni descrivono il contesto delle attività, senza duplicare ore di lavoro.",13,false),BorderLayout.WEST);
+    JPanel commands=panel(new FlowLayout(FlowLayout.RIGHT,6,0));
+    JButton add=action("+ Missione"),edit=subtle("Modifica"),docs=subtle("Documenti"),remove=subtle("Elimina");
+    for(JButton b:List.of(add,edit,docs,remove))commands.add(b);
+    top.add(commands,BorderLayout.EAST);p.add(top,BorderLayout.NORTH);
+    JTable t=makeTable(new AbstractTableModel(){
+      public int getRowCount(){return missions.size();}public int getColumnCount(){return 6;}
+      public String getColumnName(int c){return new String[]{"Missione","Tipo","Ruolo","Luogo","Dal","Al"}[c];}
+      public Object getValueAt(int r,int c){Mission m=missions.get(r);return switch(c){
+        case 0->m.title();case 1->m.type();case 2->m.role();case 3->m.location();
+        case 4->m.from().format(DISPLAY);default->m.to().format(DISPLAY);};}
+    });t.setRowHeight(31);t.setAutoCreateRowSorter(true);
+    t.getColumnModel().getColumn(0).setPreferredWidth(290);
     p.add(new JScrollPane(t),BorderLayout.CENTER);
-    p.add(label("La regola serve soltanto a stabilire se un'attività è didattica o progetto (sospensioni e costi). Non è un secondo gruppo.",12,false),BorderLayout.SOUTH);
-    add.addActionListener(e->categoryEditor(null));
-    edit.addActionListener(e->{int r=t.getSelectedRow();if(r>=0)categoryEditor(categories.get(t.convertRowIndexToModel(r)));});
-    remove.addActionListener(e->{int r=t.getSelectedRow();if(r<0)return;Category item=categories.get(t.convertRowIndexToModel(r));
-      List<Category> destinations=categories.stream().filter(c->!c.name().equalsIgnoreCase(item.name())&&c.kind().equals(item.kind())).toList();
-      boolean used;try{used=activities.stream().anyMatch(a->a.category().equalsIgnoreCase(item.name()))||store.categoryUsedInHistory(item.name());}catch(Exception ex){error(ex);return;}
-      if(used){
-        if(destinations.isEmpty()){JOptionPane.showMessageDialog(this,"Prima di eliminare questa categoria, crea un'altra categoria con la stessa regola operativa in cui trasferire le attività.");return;}
-        JComboBox<String> target=new JComboBox<>(destinations.stream().map(Category::name).toArray(String[]::new));
-        JPanel form=new JPanel(new BorderLayout(5,9));form.add(new JLabel("Sposta tutte le attività nella categoria:"),BorderLayout.NORTH);form.add(target,BorderLayout.CENTER);
-        if(JOptionPane.showConfirmDialog(this,form,"Elimina categoria: "+item.name(),JOptionPane.OK_CANCEL_OPTION)!=JOptionPane.OK_OPTION)return;
-        if(!ask("Confermi il trasferimento delle attività a '"+target.getSelectedItem()+"' e la cancellazione della categoria '"+item.name()+"'? Le registrazioni e le ore resteranno invariate."))return;
-        try{store.removeCategory(item.name(),(String)target.getSelectedItem());changed();}catch(Exception ex){error(ex);}
-      }else if(ask("Eliminare definitivamente la categoria '"+item.name()+"'?"))try{store.removeCategory(item.name(),null);changed();}catch(Exception ex){error(ex);}
-    });
-    t.addMouseListener(new MouseAdapter(){public void mouseClicked(MouseEvent e){if(e.getClickCount()==2){int r=t.getSelectedRow();if(r>=0)categoryEditor(categories.get(t.convertRowIndexToModel(r)));}}});
+    java.util.function.Supplier<Mission> selected=()->{
+      int row=t.getSelectedRow();return row<0?null:missions.get(t.convertRowIndexToModel(row));};
+    add.addActionListener(e->missionEditor(null));
+    edit.addActionListener(e->{Mission m=selected.get();if(m!=null)missionEditor(m);});
+    docs.addActionListener(e->{Mission m=selected.get();if(m!=null)missionDocumentsDialog(m);});
+    remove.addActionListener(e->{Mission m=selected.get();if(m!=null&&ask("Eliminare la missione «"+m.title()+"»? I suoi documenti saranno eliminati.\nNon è possibile se ci sono ore collegate."))try{
+      store.deleteMission(m.id());changed();
+    }catch(Exception ex){error(ex);}});
+    JPanel footer=panel(new BorderLayout());
+    JTextArea hint=new JTextArea("Partecipazione a conferenze e presentazione di paper sono motivi di missione. " +
+      "La categoria delle ore dipende dalla natura del lavoro svolto (ricerca, progetti, formazione, commissioni, ecc.). " +
+      "Viaggio, vitto e alloggio non producono automaticamente ore rendicontabili.");
+    hint.setEditable(false);hint.setLineWrap(true);hint.setWrapStyleWord(true);hint.setBackground(BG);hint.setRows(3);
+    footer.add(hint,BorderLayout.CENTER);p.add(footer,BorderLayout.SOUTH);
     return p;
   }
-  private static String ruleLabel(String kind){return switch(kind){
-    case "DIDATTICA FRONTALE"->"Didattica frontale";
-    case "DIDATTICA INTEGRATIVA"->"Didattica integrativa";
-    case "PROGETTI"->"Progetto (ore e costi)";
-    case "ATTIVITÀ ORDINARIA"->"Attività ordinaria (didattica e integrativa)";
-    default->"Attività generica";
-  };}
-  private void categoryEditor(Category existing){
-    JTextField name=new JTextField(existing==null?"":existing.name(),29);
-    String[] options={"Didattica frontale","Didattica integrativa","Progetto (ore e costi)","Attività generica","Attività ordinaria (didattica e integrativa)"};
-    JComboBox<String> rule=new JComboBox<>(options);
-    if(existing!=null)for(int i=0;i<GROUPS.length;i++)if(GROUPS[i].equals(existing.kind()))rule.setSelectedIndex(i);
-    JPanel form=new JPanel(new GridLayout(2,2,10,10));form.add(new JLabel("Nome categoria"));form.add(name);form.add(new JLabel("Regola operativa"));form.add(rule);
-    int answer=JOptionPane.showConfirmDialog(this,form,existing==null?"Nuova categoria":"Modifica categoria",JOptionPane.OK_CANCEL_OPTION,JOptionPane.PLAIN_MESSAGE);
-    if(answer!=JOptionPane.OK_OPTION)return;
-    try{store.saveCategory(existing==null?null:existing.name(),name.getText(),GROUPS[rule.getSelectedIndex()]);changed();}catch(Exception ex){error(ex);}
+  private void missionEditor(Mission old){
+    JTextField title=new JTextField(old==null?"":old.title());
+    String[] kinds={"Conferenza scientifica","Presentazione paper","Keynote","Riunione di progetto",
+      "Visita scientifica","Commissione esterna","Formazione","Altra missione"};
+    JComboBox<String> type=new JComboBox<>(kinds);type.setEditable(true);
+    JComboBox<String> role=new JComboBox<>(new String[]{"Partecipante","Relatore","Chair","Organizzatore","Commissario","Altro"});
+    JTextField location=new JTextField(old==null?"":old.location());
+    JTextField from=new JTextField(old==null?chosen.format(DISPLAY):old.from().format(DISPLAY));
+    JTextField to=new JTextField(old==null?chosen.format(DISPLAY):old.to().format(DISPLAY));
+    JTextField conference=new JTextField(old==null?"":old.conference());
+    JTextField paper=new JTextField(old==null?"":old.paper());
+    JTextField doi=new JTextField(old==null?"":old.doi());
+    JTextField auth=new JTextField(old==null?"":old.authorization());
+    JTextArea note=new JTextArea(old==null?"":old.notes(),3,28);note.setLineWrap(true);note.setWrapStyleWord(true);
+    List<MissionChoice> projects=new ArrayList<>();projects.add(new MissionChoice(null,"— Nessun progetto —"));
+    for(Activity a:availableProjects())projects.add(new MissionChoice(a.id(),projectNavLabel(a)));
+    JComboBox<MissionChoice> project=new JComboBox<>(projects.toArray(new MissionChoice[0]));
+    if(old!=null){type.setSelectedItem(old.type());role.setSelectedItem(old.role());selectMission(project,old.projectId());}
+    JPanel form=new JPanel(new GridLayout(0,2,8,7));form.setBorder(new EmptyBorder(8,12,8,12));
+    form.add(new JLabel("Titolo missione"));form.add(title);
+    form.add(new JLabel("Tipologia"));form.add(type);
+    form.add(new JLabel("Ruolo"));form.add(role);
+    form.add(new JLabel("Località"));form.add(location);
+    form.add(new JLabel("Dal (gg/mm/aaaa)"));form.add(from);
+    form.add(new JLabel("Al (gg/mm/aaaa)"));form.add(to);
+    form.add(new JLabel("Conferenza / evento"));form.add(conference);
+    form.add(new JLabel("Titolo paper"));form.add(paper);
+    form.add(new JLabel("DOI"));form.add(doi);
+    form.add(new JLabel("Progetto finanziatore (facoltativo)"));form.add(project);
+    form.add(new JLabel("Autorizzazione / protocollo"));form.add(auth);
+    form.add(new JLabel("Note"));form.add(new JScrollPane(note));
+    if(JOptionPane.showConfirmDialog(this,new JScrollPane(form),old==null?"Nuova missione":"Modifica missione",
+        JOptionPane.OK_CANCEL_OPTION,JOptionPane.PLAIN_MESSAGE)!=JOptionPane.OK_OPTION)return;
+    try{
+      MissionChoice chosenProject=(MissionChoice)project.getSelectedItem();
+      store.saveMission(new Mission(old==null?0:old.id(),title.getText().trim(),type.getSelectedItem().toString(),
+        role.getSelectedItem().toString(),location.getText().trim(),LocalDate.parse(from.getText().trim(),INPUT),
+        LocalDate.parse(to.getText().trim(),INPUT),conference.getText().trim(),paper.getText().trim(),
+        doi.getText().trim(),chosenProject==null?null:chosenProject.id(),auth.getText().trim(),note.getText().trim()));
+      changed();
+    }catch(Exception e){error(e);}
+  }
+  private void missionDocumentsDialog(Mission mission){
+    try{
+      List<MissionDocument> files=store.getMissionDocuments(mission.id());
+      JPanel p=panel(new BorderLayout(8,8));
+      String[] names=files.stream().map(d->d.filename()+" ("+d.size()+" byte)").toArray(String[]::new);
+      JList<String> listing=new JList<>(names);listing.setVisibleRowCount(8);
+      p.add(new JScrollPane(listing),BorderLayout.CENTER);
+      JPanel buttons=new JPanel(new FlowLayout(FlowLayout.RIGHT));
+      JButton attach=action("Allega"),export=subtle("Esporta copia"),delete=subtle("Rimuovi documento");
+      buttons.add(attach);buttons.add(export);buttons.add(delete);p.add(buttons,BorderLayout.SOUTH);
+      JDialog dialog=new JDialog(this,"Documenti missione: "+mission.title(),true);
+      attach.addActionListener(e->{FileDialog chooser=new FileDialog(this,"Seleziona documento missione",FileDialog.LOAD);
+        chooser.setVisible(true);if(chooser.getFile()==null)return;try{
+          store.addMissionDocument(mission.id(),Paths.get(chooser.getDirectory(),chooser.getFile()));dialog.dispose();changed();
+          missionDocumentsDialog(mission);
+        }catch(Exception ex){error(ex);}});
+      export.addActionListener(e->{int i=listing.getSelectedIndex();if(i<0)return;
+        MissionDocument file=files.get(i);FileDialog chooser=new FileDialog(this,"Esporta documento",FileDialog.SAVE);
+        chooser.setFile(file.filename());chooser.setVisible(true);if(chooser.getFile()==null)return;
+        try{store.exportMissionDocument(file.id(),Paths.get(chooser.getDirectory(),chooser.getFile()));}
+        catch(Exception ex){error(ex);}});
+      delete.addActionListener(e->{int i=listing.getSelectedIndex();if(i<0)return;
+        if(!ask("Rimuovere il documento dalla missione?"))return;
+        try{store.deleteMissionDocument(files.get(i).id());dialog.dispose();changed();missionDocumentsDialog(mission);}
+        catch(Exception ex){error(ex);}});
+      dialog.setContentPane(p);dialog.setSize(660,350);dialog.setLocationRelativeTo(this);dialog.setVisible(true);
+    }catch(Exception ex){error(ex);}
+  }
+
+  private JPanel categoryPanel(){
+    JPanel p=panel(new BorderLayout(0,12));p.setBorder(new EmptyBorder(22,27,24,27));
+    JPanel top=panel(new BorderLayout(5,8));
+    top.add(label("Le nove categorie sono predefinite; non occorre scegliere una seconda regola operativa.",13,true),BorderLayout.NORTH);
+    JButton help=action("Apri guida alle categorie");help.addActionListener(e->showPage("Guida alle categorie"));
+    top.add(help,BorderLayout.EAST);p.add(top,BorderLayout.NORTH);
+    String[] headers={"Categoria","Sospensione lezioni","Attività associate"};
+    JTable t=makeTable(new AbstractTableModel(){
+      public int getColumnCount(){return headers.length;}public int getRowCount(){return CategoryTaxonomy.RULES.size();}
+      public String getColumnName(int c){return headers[c];}
+      public Object getValueAt(int r,int c){var item=CategoryTaxonomy.RULES.get(r);return switch(c){
+        case 0->item.name();case 1->suspensionLabel(item.suspension());
+        default->activities.stream().filter(a->a.category().equals(item.name())).count();};}
+    });t.setRowHeight(33);t.getColumnModel().getColumn(0).setPreferredWidth(440);
+    t.getColumnModel().getColumn(1).setPreferredWidth(200);
+    p.add(new JScrollPane(t),BorderLayout.CENTER);
+    try{
+      long review=store.getLegacyMappings().stream().filter(LegacyMapping::review).count();
+      if(review>0){JButton reviewButton=subtle("Controlla "+review+" classificazioni storiche da verificare");
+        reviewButton.addActionListener(e->showLegacyMappingReview());
+        p.add(reviewButton,BorderLayout.SOUTH);}
+    }catch(SQLException e){error(e);}
+    return p;
+  }
+  private static String suspensionLabel(CategoryTaxonomy.Suspension s){return switch(s){
+    case BLOCK->"Blocco con deroga";case VERIFY->"Verifica richiesta";case ALLOW->"Consentita";};}
+  private JPanel categoryGuidePanel(){
+    JPanel outer=panel(new BorderLayout(0,11));outer.setBorder(new EmptyBorder(20,27,20,27));
+    JPanel sections=panel(new BorderLayout());sections.setLayout(new BoxLayout(sections,BoxLayout.Y_AXIS));
+    for(var r:CategoryTaxonomy.RULES){
+      JPanel item=new JPanel(new BorderLayout(6,6));item.setBackground(WHITE);
+      item.setBorder(new CompoundBorder(new LineBorder(LINE,1,true),new EmptyBorder(12,15,12,15)));
+      item.setMaximumSize(new Dimension(Integer.MAX_VALUE,175));
+      JLabel title=label(r.name()+"  •  "+suspensionLabel(r.suspension()),14,true);
+      item.add(title,BorderLayout.NORTH);
+      JTextArea description=new JTextArea("Comprende: "+r.includes()+"\nNon comprende: "+r.excludes()+"\nSospensione: "+r.note());
+      description.setLineWrap(true);description.setWrapStyleWord(true);description.setEditable(false);description.setBackground(WHITE);
+      description.setForeground(INK);description.setFont(new Font("SansSerif",Font.PLAIN,12));item.add(description,BorderLayout.CENTER);
+      sections.add(item);sections.add(Box.createVerticalStrut(9));
+    }
+    JTextArea intro=new JTextArea("Le categorie classificano la natura del lavoro; la missione e' una proprieta' trasversale. " +
+      "Un periodo di sospensione delle lezioni non equivale alla chiusura dell'Ateneo. " +
+      "I controlli sono supporto alla registrazione, NON attestazione di ammissibilita' per un finanziamento o per U-Web.");
+    intro.setEditable(false);intro.setLineWrap(true);intro.setWrapStyleWord(true);intro.setBackground(BG);
+    intro.setFont(new Font("SansSerif",Font.PLAIN,12));intro.setRows(3);outer.add(intro,BorderLayout.NORTH);
+    JScrollPane scroll=new JScrollPane(sections);scroll.setBorder(null);scroll.getVerticalScrollBar().setUnitIncrement(24);
+    outer.add(scroll,BorderLayout.CENTER);return outer;
+  }
+  private void showLegacyMappingReview(){
+    try{
+      List<LegacyMapping> rows=store.getLegacyMappings().stream().filter(LegacyMapping::review).toList();
+      StringBuilder content=new StringBuilder("Classificazioni precedenti non univoche.\n\n");
+      for(LegacyMapping row:rows)content.append("• ").append(row.oldCategory()).append(" → ").append(row.newCategory()).append(" (provvisoria)\n");
+      content.append("\nLe etichette originali sono conservate nel database. Per correggere i nuovi inserimenti, modifica la categoria dell'attivita'. " +
+        "Per lo storico seleziona la riclassificazione esplicita; i mesi bloccati rimangono protetti.");
+      JTextArea a=new JTextArea(content.toString(),Math.min(16,rows.size()+6),63);
+      a.setEditable(false);a.setLineWrap(true);a.setWrapStyleWord(true);
+      JOptionPane.showMessageDialog(this,new JScrollPane(a),"Revisione categorie storiche",JOptionPane.INFORMATION_MESSAGE);
+    }catch(SQLException ex){error(ex);}
   }
 
   private JPanel activityPanel() {
@@ -1738,9 +1926,10 @@ public final class App extends JFrame {
   }
   static void writeCsv(Path destination,List<LogEntry> selected) throws IOException{
     try(Writer writer=new OutputStreamWriter(Files.newOutputStream(destination),StandardCharsets.UTF_8)){
-      writer.write('\ufeff');writer.write("Data;Giorno;Attività;Categoria;Ore;Note;Origine\n");
+      writer.write('\ufeff');writer.write("Data;Giorno;Attività;Categoria;Ore;Note;Origine;ID missione\n");
       for(LogEntry log:selected){String[] parts={log.date().format(DISPLAY), DAYS[log.date().getDayOfWeek().getValue()-1],
-        log.activity().name(),log.activity().category(),log.hours()==null?"":fmt(log.hours()),log.note(),log.source()==null?"":log.source()};
+        log.activity().name(),log.activity().category(),log.hours()==null?"":fmt(log.hours()),log.note(),log.source()==null?"":log.source(),
+        log.missionId()==null?"":log.missionId().toString()};
         writer.write(Arrays.stream(parts).map(App::csv).collect(Collectors.joining(";"))+"\n");
       }
     }
@@ -1751,7 +1940,8 @@ public final class App extends JFrame {
     private static final List<String> TRACKED_TABLES = List.of(
       "activities", "categories", "profile", "annual_settings", "month_locks", "entries",
       "suspensions", "notes", "project_details", "project_people", "project_person_hours",
-      "project_documents", "project_month_locks", "own_role_history", "person_role_history");
+      "project_documents", "project_month_locks", "own_role_history", "person_role_history",
+      "missions", "mission_documents");
     private final Connection db;
     private final Path databasePath;
     Store(Path path) throws Exception {
@@ -1978,7 +2168,9 @@ public final class App extends JFrame {
         st.execute("CREATE TRIGGER IF NOT EXISTS annual_limit_insert BEFORE INSERT ON entries WHEN (SELECT COALESCE(SUM(hours),0) FROM entries WHERE substr(work_date,1,4)=substr(NEW.work_date,1,4)) + COALESCE(NEW.hours,0) > 1500.000001 BEGIN SELECT RAISE(ABORT,'Superato limite annuale 1500 ore'); END");
         st.execute("CREATE TRIGGER IF NOT EXISTS annual_limit_update BEFORE UPDATE ON entries WHEN (SELECT COALESCE(SUM(hours),0) FROM entries WHERE substr(work_date,1,4)=substr(NEW.work_date,1,4) AND id != OLD.id) + COALESCE(NEW.hours,0) > 1500.000001 BEGIN SELECT RAISE(ABORT,'Superato limite annuale 1500 ore'); END");
         // Le categorie originarie non sono più di sistema. Il cambiamento è idempotente.
-        st.execute("UPDATE categories SET system=0 WHERE system<>0");
+        // Le nove categorie canoniche sono di sistema e non vanno declassate ai riavvii.
+        st.execute("UPDATE categories SET system=0 WHERE system<>0 AND name NOT IN ("+
+          String.join(",",Arrays.stream(CategoryTaxonomy.names()).map(n->"'"+n.replace("'","''")+"'").toList())+")");
         // I vecchi vincoli su gruppi e sottogruppi non sono più utilizzati.
         for(String oldTrigger:new String[]{"category_system_rename","category_protect_delete","activity_subgroup_insert","activity_subgroup_update","activity_subgroup_locked_update","activity_lock_update"})
           st.execute("DROP TRIGGER IF EXISTS "+oldTrigger);
@@ -2096,16 +2288,191 @@ public final class App extends JFrame {
         st.execute("ALTER TABLE categories ADD COLUMN ordinary_flag INTEGER NOT NULL DEFAULT 0 CHECK(ordinary_flag IN (0,1))");
       }
     }
+    /** Migrazione una-tantum. Le denominazioni originali rimangono nei campi legacy_*.
+     * Un mapping incerto diventa Altre attività, con segnalazione per revisione umana. */
+    void migrateCategoriesV311() throws SQLException {
+      try(Statement st=db.createStatement()){
+        st.execute("CREATE TABLE IF NOT EXISTS app_metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL)");
+      }
+      try(Statement st=db.createStatement();ResultSet r=st.executeQuery(
+          "SELECT value FROM app_metadata WHERE key='category_taxonomy_v311'")){
+        if(r.next()&&"complete".equals(r.getString(1)))return;
+      }
+      Path safety=databasePath.resolveSibling(databasePath.getFileName()+".backup-prima-categorie-v311.sqlite");
+      if(!Files.exists(safety))backup(safety);
+      db.setAutoCommit(false);
+      try{
+        try(Statement st=db.createStatement()){
+          if(!hasColumn("activities","legacy_category_v311"))st.execute("ALTER TABLE activities ADD COLUMN legacy_category_v311 TEXT");
+          if(!hasColumn("entries","legacy_category_v311"))st.execute("ALTER TABLE entries ADD COLUMN legacy_category_v311 TEXT");
+          st.execute("CREATE TABLE IF NOT EXISTS legacy_category_mapping (old_name TEXT PRIMARY KEY, new_name TEXT NOT NULL, review INTEGER NOT NULL)");
+        }
+        record Original(String old,String kind){}
+        List<Original> originals=new ArrayList<>();
+        try(Statement st=db.createStatement();ResultSet r=st.executeQuery(
+          "SELECT name,CASE WHEN ordinary_flag=1 THEN 'ATTIVITÀ ORDINARIA' ELSE kind END FROM categories WHERE name<>'SEGNAPOSTO SOSPENSIONE'")){
+          while(r.next())originals.add(new Original(r.getString(1),r.getString(2)));
+        }
+        for(var rule:CategoryTaxonomy.RULES){
+          try(PreparedStatement insert=db.prepareStatement("INSERT OR IGNORE INTO categories(name,kind,system,ordinary_flag) VALUES(?,?,1,0)")){
+            insert.setString(1,rule.name());insert.setString(2,rule.technicalKind());insert.executeUpdate();
+          }
+          // Anche su installazioni con categorie custom omonime, forza kind canonico.
+          try(PreparedStatement update=db.prepareStatement("UPDATE categories SET name=?,kind=?,system=1,ordinary_flag=0 WHERE name=? COLLATE NOCASE")){
+            update.setString(1,rule.name());update.setString(2,rule.technicalKind());update.setString(3,rule.name());update.executeUpdate();
+          }
+        }
+        for(Original o:originals){
+          var guess=CategoryTaxonomy.mapLegacy(o.old(),o.kind());
+          if(!o.old().equals(guess.target())){
+            try(PreparedStatement hist=db.prepareStatement("UPDATE entries SET legacy_category_v311=COALESCE(legacy_category_v311,category_snapshot),category_snapshot=? WHERE category_snapshot=? COLLATE NOCASE")){
+              hist.setString(1,guess.target());hist.setString(2,o.old());hist.executeUpdate();
+            }
+            try(PreparedStatement current=db.prepareStatement("UPDATE activities SET legacy_category_v311=COALESCE(legacy_category_v311,category),category=? WHERE category=? COLLATE NOCASE")){
+              current.setString(1,guess.target());current.setString(2,o.old());current.executeUpdate();
+            }
+          }
+          if(guess.requiresReview())try(PreparedStatement alert=db.prepareStatement("INSERT OR IGNORE INTO legacy_category_mapping(old_name,new_name,review) VALUES(?,?,1)")){
+            alert.setString(1,o.old());alert.setString(2,guess.target());alert.executeUpdate();
+          }
+        }
+        // Una scheda progetto è una prova più forte di qualsiasi denominazione custom.
+        try(Statement st=db.createStatement()){
+          st.execute("UPDATE activities SET legacy_category_v311=COALESCE(legacy_category_v311,category),category='"+CategoryTaxonomy.FUNDED+"' " +
+            "WHERE id IN (SELECT activity_id FROM project_details) AND category<>'"+CategoryTaxonomy.FUNDED+"'");
+          st.execute("DELETE FROM categories WHERE system=0 AND name<>'SEGNAPOSTO SOSPENSIONE' " +
+            "AND name NOT IN (SELECT category FROM activities) AND name NOT IN (SELECT category_snapshot FROM entries)");
+          st.execute("INSERT INTO app_metadata(key,value) VALUES('category_taxonomy_v311','complete') " +
+            "ON CONFLICT(key) DO UPDATE SET value='complete'");
+        }
+        db.commit();
+      }catch(SQLException|RuntimeException ex){db.rollback();throw ex;}finally{db.setAutoCommit(true);}
+    }
+    /** Gestione trasversale missioni. Non crea automaticamente ore. */
+    void migrateMissionsV311() throws SQLException {
+      try(Statement st=db.createStatement()){
+        st.execute("CREATE TABLE IF NOT EXISTS missions ("+
+          "id INTEGER PRIMARY KEY AUTOINCREMENT,title TEXT NOT NULL,type TEXT NOT NULL,role TEXT NOT NULL,"+
+          "location TEXT NOT NULL,start_date TEXT NOT NULL,end_date TEXT NOT NULL,"+
+          "conference TEXT NOT NULL DEFAULT '',paper_title TEXT NOT NULL DEFAULT '',doi TEXT NOT NULL DEFAULT '',"+
+          "project_activity_id INTEGER REFERENCES activities(id) ON DELETE SET NULL,"+
+          "authorization TEXT NOT NULL DEFAULT '',notes TEXT NOT NULL DEFAULT '',"+
+          "created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,CHECK(start_date<=end_date))");
+        st.execute("CREATE TABLE IF NOT EXISTS mission_documents (id INTEGER PRIMARY KEY AUTOINCREMENT,"+
+          "mission_id INTEGER NOT NULL REFERENCES missions(id) ON DELETE CASCADE,"+
+          "filename TEXT NOT NULL,bytes BLOB NOT NULL,description TEXT NOT NULL DEFAULT '',"+
+          "uploaded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)");
+        if(!hasColumn("entries","mission_id"))st.execute("ALTER TABLE entries ADD COLUMN mission_id INTEGER REFERENCES missions(id) ON DELETE SET NULL");
+        st.execute("CREATE INDEX IF NOT EXISTS idx_entries_mission ON entries(mission_id)");
+        st.execute("DROP TRIGGER IF EXISTS entries_lock_mission_update");
+        st.execute("CREATE TRIGGER entries_lock_mission_update BEFORE UPDATE OF mission_id ON entries " +
+          "WHEN EXISTS(SELECT 1 FROM month_locks WHERE year=CAST(substr(OLD.work_date,1,4) AS INTEGER) " +
+          "AND month=CAST(substr(OLD.work_date,6,2) AS INTEGER)) " +
+          "BEGIN SELECT RAISE(ABORT,'Mensilita bloccata: non puoi modificare la missione associata'); END");
+        st.execute("DROP TRIGGER IF EXISTS entries_mission_date_insert");
+        st.execute("CREATE TRIGGER entries_mission_date_insert BEFORE INSERT ON entries WHEN NEW.mission_id IS NOT NULL " +
+          "AND NOT EXISTS(SELECT 1 FROM missions WHERE id=NEW.mission_id AND NEW.work_date BETWEEN start_date AND end_date) " +
+          "BEGIN SELECT RAISE(ABORT,'La registrazione e fuori dal periodo della missione'); END");
+        st.execute("DROP TRIGGER IF EXISTS entries_mission_date_update");
+        st.execute("CREATE TRIGGER entries_mission_date_update BEFORE UPDATE OF mission_id,work_date ON entries WHEN NEW.mission_id IS NOT NULL " +
+          "AND NOT EXISTS(SELECT 1 FROM missions WHERE id=NEW.mission_id AND NEW.work_date BETWEEN start_date AND end_date) " +
+          "BEGIN SELECT RAISE(ABORT,'La registrazione e fuori dal periodo della missione'); END");
+        st.execute("DROP TRIGGER IF EXISTS missions_dates_update");
+        st.execute("CREATE TRIGGER missions_dates_update BEFORE UPDATE OF start_date,end_date ON missions WHEN " +
+          "EXISTS(SELECT 1 FROM entries WHERE mission_id=OLD.id AND work_date NOT BETWEEN NEW.start_date AND NEW.end_date) " +
+          "BEGIN SELECT RAISE(ABORT,'La modifica del periodo escluderebbe registrazioni collegate'); END");
+      }
+    }
+    List<Mission> getMissions() throws SQLException {
+      List<Mission> list=new ArrayList<>();
+      try(Statement st=db.createStatement();ResultSet r=st.executeQuery(
+          "SELECT id,title,type,role,location,start_date,end_date,conference,paper_title,doi,project_activity_id,authorization,notes FROM missions ORDER BY start_date DESC,title COLLATE NOCASE")){
+        while(r.next())list.add(new Mission(r.getInt(1),r.getString(2),r.getString(3),r.getString(4),r.getString(5),
+          LocalDate.parse(r.getString(6)),LocalDate.parse(r.getString(7)),r.getString(8),r.getString(9),r.getString(10),
+          r.getObject(11)==null?null:r.getInt(11),r.getString(12),r.getString(13)));
+      }return list;
+    }
+    void saveMission(Mission m) throws SQLException {
+      if(m.title().isBlank()||m.type().isBlank()||m.location().isBlank()||m.from().isAfter(m.to()))
+        throw new IllegalArgumentException("Titolo, tipo, localita e periodo valido sono obbligatori.");
+      String sql=m.id()==0?
+        "INSERT INTO missions(title,type,role,location,start_date,end_date,conference,paper_title,doi,project_activity_id,authorization,notes) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)":
+        "UPDATE missions SET title=?,type=?,role=?,location=?,start_date=?,end_date=?,conference=?,paper_title=?,doi=?,project_activity_id=?,authorization=?,notes=? WHERE id=?";
+      try(PreparedStatement p=db.prepareStatement(sql)){
+        p.setString(1,m.title().trim());p.setString(2,m.type());p.setString(3,m.role());p.setString(4,m.location().trim());
+        p.setString(5,m.from().toString());p.setString(6,m.to().toString());p.setString(7,m.conference());
+        p.setString(8,m.paper());p.setString(9,m.doi());
+        if(m.projectId()==null)p.setNull(10,Types.INTEGER);else p.setInt(10,m.projectId());
+        p.setString(11,m.authorization());p.setString(12,m.notes());if(m.id()!=0)p.setInt(13,m.id());
+        p.executeUpdate();
+      }
+    }
+    void deleteMission(int id) throws SQLException {
+      try(PreparedStatement p=db.prepareStatement("SELECT 1 FROM entries WHERE mission_id=? LIMIT 1")){
+        p.setInt(1,id);try(ResultSet r=p.executeQuery()){
+          if(r.next())throw new IllegalStateException("Missione collegata a registrazioni. Scollega prima le ore, senza eliminarle.");
+        }
+      }
+      try(PreparedStatement p=db.prepareStatement("DELETE FROM missions WHERE id=?")){
+        p.setInt(1,id);p.executeUpdate();
+      }
+    }
+    void validateMissionDate(Integer id,LocalDate date) throws SQLException {
+      if(id==null)return;
+      try(PreparedStatement p=db.prepareStatement("SELECT 1 FROM missions WHERE id=? AND ? BETWEEN start_date AND end_date")){
+        p.setInt(1,id);p.setString(2,date.toString());
+        try(ResultSet r=p.executeQuery()){if(!r.next())throw new IllegalArgumentException("Data fuori dal periodo della missione selezionata.");}
+      }
+    }
+    List<MissionDocument> getMissionDocuments(int id) throws SQLException{
+      List<MissionDocument> docs=new ArrayList<>();
+      try(PreparedStatement p=db.prepareStatement("SELECT id,filename,length(bytes) FROM mission_documents WHERE mission_id=? ORDER BY id")){
+        p.setInt(1,id);try(ResultSet r=p.executeQuery()){while(r.next())docs.add(new MissionDocument(r.getInt(1),r.getString(2),r.getLong(3)));}
+      }return docs;
+    }
+    void addMissionDocument(int missionId,Path file) throws Exception {
+      if(Files.size(file)>30L*1024L*1024L)throw new IllegalArgumentException("Documento troppo grande: massimo 30 MB.");
+      try(PreparedStatement p=db.prepareStatement("INSERT INTO mission_documents(mission_id,filename,bytes) VALUES(?,?,?)")){
+        p.setInt(1,missionId);p.setString(2,file.getFileName().toString());p.setBytes(3,Files.readAllBytes(file));p.executeUpdate();
+      }
+    }
+    void exportMissionDocument(int docId,Path output) throws Exception {
+      try(PreparedStatement p=db.prepareStatement("SELECT bytes FROM mission_documents WHERE id=?")){
+        p.setInt(1,docId);try(ResultSet r=p.executeQuery()){
+          if(!r.next())throw new IllegalArgumentException("Documento non disponibile.");
+          Files.write(output,r.getBytes(1));
+        }
+      }
+    }
+    void deleteMissionDocument(int id) throws SQLException{
+      try(PreparedStatement p=db.prepareStatement("DELETE FROM mission_documents WHERE id=?")){
+        p.setInt(1,id);p.executeUpdate();
+      }
+    }
+
+    List<LegacyMapping> getLegacyMappings() throws SQLException {
+      List<LegacyMapping> mappings=new ArrayList<>();
+      try(Statement st=db.createStatement();ResultSet r=st.executeQuery(
+          "SELECT old_name,new_name,review FROM legacy_category_mapping ORDER BY old_name COLLATE NOCASE")){
+        while(r.next())mappings.add(new LegacyMapping(r.getString(1),r.getString(2),r.getInt(3)!=0));
+      }return mappings;
+    }
+
     List<Category> getCategories() throws SQLException{
       List<Category> list=new ArrayList<>();
-      try(Statement st=db.createStatement();ResultSet r=st.executeQuery("SELECT name,CASE WHEN ordinary_flag=1 THEN 'ATTIVIT\u00c0 ORDINARIA' ELSE kind END,system FROM categories WHERE name<>'SEGNAPOSTO SOSPENSIONE' ORDER BY name COLLATE NOCASE")){
-        while(r.next())list.add(new Category(r.getString(1),r.getString(2),r.getInt(3)!=0));
+      for(String canonical:CategoryTaxonomy.names()){
+        try(PreparedStatement p=db.prepareStatement("SELECT name,kind,system FROM categories WHERE name=? COLLATE NOCASE")){
+          p.setString(1,canonical);try(ResultSet r=p.executeQuery()){
+            if(r.next())list.add(new Category(canonical,r.getString(2),true));
+          }
+        }
       }return list;
     }
     boolean categoryExists(String name) throws SQLException{
       try(PreparedStatement p=db.prepareStatement("SELECT 1 FROM categories WHERE name=? COLLATE NOCASE")){p.setString(1,name);try(ResultSet r=p.executeQuery()){return r.next();}}
     }
     void saveCategory(String old,String name,String kind) throws SQLException{
+      if(true)throw new IllegalStateException("Le nove categorie sono predefinite nella versione 3.11.");
       name=name==null?"":name.trim();
       if(name.isBlank()||name.equalsIgnoreCase("SEGNAPOSTO SOSPENSIONE"))throw new IllegalArgumentException("Inserisci un nome di categoria valido.");
       if(!Arrays.asList(GROUPS).contains(kind))throw new IllegalArgumentException("Regola operativa non valida.");
@@ -2139,6 +2506,7 @@ public final class App extends JFrame {
       try(PreparedStatement p=db.prepareStatement("SELECT CASE WHEN ordinary_flag=1 THEN 'ATTIVIT\u00c0 ORDINARIA' ELSE kind END FROM categories WHERE name=?")){p.setString(1,name);try(ResultSet r=p.executeQuery()){return r.next()?r.getString(1):"ALTRE ATTIVITÀ";}}
     }
     void removeCategory(String name,String destination) throws SQLException{
+      if(true)throw new IllegalStateException("Le nove categorie sono predefinite nella versione 3.11.");
       db.setAutoCommit(false);
       try{
         if(destination!=null){
@@ -2169,10 +2537,10 @@ public final class App extends JFrame {
     }
     List<Activity> getActivities() throws SQLException{List<Activity> result=new ArrayList<>();try(Statement s=db.createStatement();ResultSet r=s.executeQuery("SELECT id,name,category,color FROM activities ORDER BY name COLLATE NOCASE")){while(r.next())result.add(new Activity(r.getInt(1),r.getString(2),r.getString(3),r.getString(4)));}return result;}
     List<LogEntry> getLogs(int year) throws SQLException {
-      List<LogEntry> list=new ArrayList<>();String sql="SELECT e.id,e.work_date,a.id,a.name,COALESCE(e.category_snapshot,a.category),a.color,e.hours,e.note,e.source_ref FROM entries e JOIN activities a ON e.activity_id=a.id WHERE e.work_date >= ? AND e.work_date < ? ORDER BY e.work_date,e.id";
+      List<LogEntry> list=new ArrayList<>();String sql="SELECT e.id,e.work_date,a.id,a.name,COALESCE(e.category_snapshot,a.category),a.color,e.hours,e.note,e.source_ref,e.mission_id FROM entries e JOIN activities a ON e.activity_id=a.id WHERE e.work_date >= ? AND e.work_date < ? ORDER BY e.work_date,e.id";
       try(PreparedStatement p=db.prepareStatement(sql)){p.setString(1,year+"-01-01");p.setString(2,(year+1)+"-01-01");try(ResultSet r=p.executeQuery()){while(r.next()){
         double hours=r.getDouble(7);Double val=r.wasNull()?null:hours;
-        list.add(new LogEntry(r.getInt(1),LocalDate.parse(r.getString(2)),new Activity(r.getInt(3),r.getString(4),r.getString(5),r.getString(6)),val,r.getString(8),r.getString(9)));
+        list.add(new LogEntry(r.getInt(1),LocalDate.parse(r.getString(2)),new Activity(r.getInt(3),r.getString(4),r.getString(5),r.getString(6)),val,r.getString(8),r.getString(9),r.getObject(10)==null?null:r.getInt(10)));
       }}}return list;
     }
     Map<LocalDate,String> getSuspensions(int year) throws SQLException{Map<LocalDate,String> map=new HashMap<>();try(PreparedStatement p=db.prepareStatement("SELECT work_date,reason FROM suspensions WHERE work_date >= ? AND work_date < ?")){p.setString(1,year+"-01-01");p.setString(2,(year+1)+"-01-01");try(ResultSet r=p.executeQuery()){while(r.next())map.put(LocalDate.parse(r.getString(1)),r.getString(2));}}return map;}
@@ -2182,7 +2550,7 @@ public final class App extends JFrame {
       float hue=(float)((n*0.61803398875)%1.0);Color c=Color.getHSBColor(hue,0.25f,0.99f);return toHex(c);
     }
     /** Tutte le date vengono validate prima dell'inserimento e salvate nella medesima transazione. */
-    void saveEntriesBatch(int year,List<LocalDate> dates,String name,String category,double hours,String note) throws SQLException{
+    void saveEntriesBatch(int year,List<LocalDate> dates,String name,String category,double hours,String note,Integer missionId) throws SQLException{
       if(dates.isEmpty()||dates.stream().distinct().count()!=dates.size())throw new IllegalArgumentException("Selezione giorni non valida.");
       if(!Double.isFinite(hours)||hours<=0||hours>24)throw new IllegalArgumentException("Ore per giorno non valide.");
       if(!categoryExists(category))throw new IllegalArgumentException("Categoria non riconosciuta.");
@@ -2196,14 +2564,12 @@ public final class App extends JFrame {
           }
         }
       }
-      String kind=categoryKindDb(category);
       for(LocalDate d:dates){
         if(d.getYear()!=year)throw new IllegalArgumentException("Data fuori annualità: "+d);
         if(isMonthLocked(d.getYear(),d.getMonthValue()))throw new IllegalArgumentException("Mese bloccato: "+d.format(DISPLAY));
-        if(kind.equals(GROUPS[0])||kind.equals(GROUPS[1])||kind.equals(GROUPS[4])){
-          if(d.getDayOfWeek().getValue()>=6)throw new IllegalArgumentException("Didattica non ammessa nei weekend: "+d.format(DISPLAY));
-          try(PreparedStatement p=db.prepareStatement("SELECT 1 FROM suspensions WHERE work_date=?")){p.setString(1,d.toString());try(ResultSet r=p.executeQuery()){if(r.next())throw new IllegalArgumentException("Didattica non ammessa durante la sospensione: "+d.format(DISPLAY));}}
-        }
+        validateMissionDate(missionId,d);
+        // Convalida della sospensione gestita dalla UI con conferma e motivazione in nota;
+        // il database applica separatamente i blocchi mensili e di progetto.
       }
       double total=0;try(PreparedStatement p=db.prepareStatement("SELECT COALESCE(SUM(hours),0) FROM entries WHERE substr(work_date,1,4)=?")){
         p.setString(1,Integer.toString(year));try(ResultSet r=p.executeQuery()){if(r.next())total=r.getDouble(1);}
@@ -2217,14 +2583,16 @@ public final class App extends JFrame {
           id=findActivity(name);
 
         }
-        try(PreparedStatement p=db.prepareStatement("INSERT INTO entries(work_date,activity_id,hours,note,category_snapshot) VALUES(?,?,?,?,(SELECT category FROM activities WHERE id=?))")){
-          for(LocalDate d:dates){p.setString(1,d.toString());p.setInt(2,id);p.setDouble(3,hours);p.setString(4,note);p.setInt(5,id);p.addBatch();}
+        try(PreparedStatement p=db.prepareStatement("INSERT INTO entries(work_date,activity_id,hours,note,category_snapshot,mission_id) VALUES(?,?,?,?,(SELECT category FROM activities WHERE id=?),?)")){
+          for(LocalDate d:dates){p.setString(1,d.toString());p.setInt(2,id);p.setDouble(3,hours);p.setString(4,note);p.setInt(5,id);
+            if(missionId==null)p.setNull(6,Types.INTEGER);else p.setInt(6,missionId);p.addBatch();}
           p.executeBatch();
         }
         db.commit();
       }catch(SQLException|RuntimeException ex){db.rollback();throw ex;}finally{db.setAutoCommit(true);}
     }
-    void saveEntry(Integer id,LocalDate date,String name,String category,Double hours,String note) throws SQLException{
+    void saveEntry(Integer id,LocalDate date,String name,String category,Double hours,String note,Integer missionId) throws SQLException{
+      validateMissionDate(missionId,date);
       if(!categoryExists(category))throw new IllegalArgumentException("Categoria non riconosciuta.");
       db.setAutoCommit(false);try{
         int act=findActivity(name);
@@ -2233,8 +2601,12 @@ public final class App extends JFrame {
           p.setString(1,name);p.setString(2,category);p.setString(3,nextColor());p.executeUpdate();act=findActivity(name);if(act<0)throw new SQLException("Impossibile creare l'attività.");
 }
         }
-        if(id==null){try(PreparedStatement p=db.prepareStatement("INSERT INTO entries(work_date,activity_id,hours,note,category_snapshot) VALUES(?,?,?,?,(SELECT category FROM activities WHERE id=?))")){p.setString(1,date.toString());p.setInt(2,act);if(hours==null)p.setNull(3,Types.DOUBLE);else p.setDouble(3,hours);p.setString(4,note);p.setInt(5,act);p.executeUpdate();}}
-        else{try(PreparedStatement p=db.prepareStatement("UPDATE entries SET work_date=?,activity_id=?,hours=?,note=?,category_snapshot=CASE WHEN activity_id=? THEN category_snapshot ELSE (SELECT category FROM activities WHERE id=?) END WHERE id=?")){p.setString(1,date.toString());p.setInt(2,act);if(hours==null)p.setNull(3,Types.DOUBLE);else p.setDouble(3,hours);p.setString(4,note);p.setInt(5,act);p.setInt(6,act);p.setInt(7,id);p.executeUpdate();}}
+        if(id==null){try(PreparedStatement p=db.prepareStatement("INSERT INTO entries(work_date,activity_id,hours,note,category_snapshot,mission_id) VALUES(?,?,?,?,(SELECT category FROM activities WHERE id=?),?)")){
+          p.setString(1,date.toString());p.setInt(2,act);if(hours==null)p.setNull(3,Types.DOUBLE);else p.setDouble(3,hours);p.setString(4,note);p.setInt(5,act);
+          if(missionId==null)p.setNull(6,Types.INTEGER);else p.setInt(6,missionId);p.executeUpdate();}}
+        else{try(PreparedStatement p=db.prepareStatement("UPDATE entries SET work_date=?,activity_id=?,hours=?,note=?,category_snapshot=CASE WHEN activity_id=? THEN category_snapshot ELSE (SELECT category FROM activities WHERE id=?) END,mission_id=? WHERE id=?")){
+          p.setString(1,date.toString());p.setInt(2,act);if(hours==null)p.setNull(3,Types.DOUBLE);else p.setDouble(3,hours);p.setString(4,note);p.setInt(5,act);p.setInt(6,act);
+          if(missionId==null)p.setNull(7,Types.INTEGER);else p.setInt(7,missionId);p.setInt(8,id);p.executeUpdate();}}
         db.commit();
       }catch(SQLException|RuntimeException e){db.rollback();throw e;}finally{db.setAutoCommit(true);}
     }
@@ -2307,7 +2679,7 @@ public final class App extends JFrame {
         }
       }
       String kind=categoryKindDb(newCategory);
-      if(kind.equals(GROUPS[0])||kind.equals(GROUPS[1])||kind.equals(GROUPS[4])){
+      if(CategoryTaxonomy.FRONT.equals(newCategory)){
         String invalid="SELECT e.work_date FROM entries e WHERE e.activity_id=? AND "
           +"(CAST(strftime('%w',e.work_date) AS INTEGER) IN (0,6) "
           +"OR EXISTS(SELECT 1 FROM suspensions s WHERE s.work_date=e.work_date)) LIMIT 1";
@@ -2661,11 +3033,11 @@ public final class App extends JFrame {
     }
     List<LogEntry> searchEntries(String needle,LocalDate from,LocalDate to) throws SQLException{
       List<LogEntry> result=new ArrayList<>();
-      String sql="SELECT e.id,e.work_date,a.id,a.name,COALESCE(e.category_snapshot,a.category),a.color,e.hours,e.note,e.source_ref FROM entries e JOIN activities a ON a.id=e.activity_id WHERE e.work_date BETWEEN ? AND ? AND a.name LIKE ? ESCAPE '~' COLLATE NOCASE ORDER BY e.work_date,e.id";
+      String sql="SELECT e.id,e.work_date,a.id,a.name,COALESCE(e.category_snapshot,a.category),a.color,e.hours,e.note,e.source_ref,e.mission_id FROM entries e JOIN activities a ON a.id=e.activity_id WHERE e.work_date BETWEEN ? AND ? AND a.name LIKE ? ESCAPE '~' COLLATE NOCASE ORDER BY e.work_date,e.id";
       try(PreparedStatement p=db.prepareStatement(sql)){p.setString(1,from.toString());p.setString(2,to.toString());p.setString(3,"%"+needle.replace("~","~~").replace("%","~%").replace("_","~_")+"%");
         try(ResultSet r=p.executeQuery()){while(r.next()){
           Activity activity=new Activity(r.getInt(3),r.getString(4),r.getString(5),r.getString(6));Object h=r.getObject(7);
-          result.add(new LogEntry(r.getInt(1),LocalDate.parse(r.getString(2)),activity,h==null?null:r.getDouble(7),r.getString(8),r.getString(9)));
+          result.add(new LogEntry(r.getInt(1),LocalDate.parse(r.getString(2)),activity,h==null?null:r.getDouble(7),r.getString(8),r.getString(9),r.getObject(10)==null?null:r.getInt(10)));
         }}
       }
       return result;

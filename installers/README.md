@@ -1,4 +1,4 @@
-# Installer — Registro Ore 3.10.3
+# Installer — Registro Ore 3.11.0
 
 - `macos/`: prima installazione e aggiornamento, con backup del database preesistente.
 - `windows/`: applicazione `.exe` 64 bit avviabile con doppio clic.

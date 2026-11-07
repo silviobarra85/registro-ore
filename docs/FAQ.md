@@ -1,4 +1,4 @@
-# FAQ — Registro Ore 3.10.3
+# FAQ — Registro Ore 3.11.0
 
 **Dove si trovano le ore?** Nel database SQLite locale. Il percorso effettivo è visualizzato in basso a sinistra e in **Sistema → Stato database**.
 
@@ -29,3 +29,19 @@ Sì: usare **Gestione → Attività → Archivia**. L'archiviazione è esplicita
 ### Posso eliminare un progetto che contiene ore o allegati?
 
 No. Per proteggere timesheet e documenti, l'eliminazione definitiva è consentita soltanto quando non esistono dati collegati. Utilizzare l'archiviazione negli altri casi.
+
+### Perché non posso creare altre Categorie?
+
+A partire dalla 3.11.0 le **nove Categorie** definiscono direttamente il comportamento gestionale e i filtri di rendicontazione. Si possono creare liberamente le singole **Attività** usando una delle nove Categorie, ma non introdurre una decima categoria personalizzata. La sezione **Gestione → Guida alle categorie** ne chiarisce usi e limiti.
+
+### Durante una sospensione didattica posso registrare una commissione o un convegno?
+
+La sospensione delle lezioni non vieta automaticamente le altre prestazioni. Per le **Commissioni** e alcune attività integrative l'app chiede una verifica e una motivazione; la ricerca, incluse conferenze scientifiche, è ordinariamente consentita, salvo il provvedimento specifico e le regole amministrative. Le lezioni frontali richiedono una deroga motivata. Un avviso dell'app non garantisce l'ammissibilità di una spesa o di ore finanziate.
+
+### «Missioni» è una decima Categoria?
+
+No. Si registra una missione con sede, periodo e scopo, poi si collegano a essa le ore lavorate tramite le rispettive categorie. Partecipare a una conferenza per aggiornarsi, presentare un paper scientifico e presentare un lavoro di progetto possono appartenere a categorie diverse. Le ore non vengono conteggiate due volte.
+
+### Che cosa succede alle vecchie categorie dopo l'aggiornamento?
+
+Alla prima apertura la 3.11.0 crea una copia di sicurezza e converte la classificazione nelle nove categorie. I nomi originari restano tracciati; i casi ambigui vengono evidenziati per revisione. Le ore, le note, i progetti e i blocchi contabili rimangono invariati.

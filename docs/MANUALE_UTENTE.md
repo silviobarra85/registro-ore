@@ -1,8 +1,8 @@
-# Manuale utente — Registro Ore 3.10.3
+# Manuale utente — Registro Ore 3.11.0
 
 **Destinatari:** docenti, ricercatori e collaboratori che devono registrare attività e rendicontare ore su progetti, didattica e altre attività.
 
-> Il manuale descrive la versione Java 3.10.3. Le etichette potrebbero variare leggermente secondo il sistema operativo. Conservare sempre una copia di sicurezza prima di importazioni e aggiornamenti.
+> Il manuale descrive la versione Java 3.11.0. Le etichette potrebbero variare leggermente secondo il sistema operativo. Conservare sempre una copia di sicurezza prima di importazioni e aggiornamenti.
 
 ## Indice
 
@@ -20,24 +20,25 @@
 12. [Backup, ripristino e storico modifiche](#12-backup-ripristino-e-storico-modifiche)
 13. [Database e sicurezza](#13-database-e-sicurezza)
 14. [Risoluzione dei problemi](#14-risoluzione-dei-problemi)
+15. [Missioni](#15-missioni)
 
 ## 1. Installazione
 
 ### macOS
 
-**Prima installazione:** scaricare `installers/macos/RegistroOre_3_10_3_MAC_VERGINE.zip`, decomprimere e fare doppio clic su `INSTALLA_REGISTRO_ORE.command`. La nuova applicazione verrà installata nella cartella applicativa prevista dallo script. Dopo l'installazione avviarla dal Finder.
+**Prima installazione:** scaricare `installers/macos/RegistroOre_3_11_0_MAC_VERGINE.zip`, decomprimere e fare doppio clic su `INSTALLA_REGISTRO_ORE.command`. La nuova applicazione verrà installata nella cartella applicativa prevista dallo script. Dopo l'installazione avviarla dal Finder.
 
-**Aggiornamento:** chiudere il programma, scaricare `RegistroOre_3_10_3_MAC_AGGIORNAMENTO.zip` e avviare con doppio clic `AGGIORNA_REGISTRO_ORE.command`. Questo pacchetto **non va usato per una prima installazione** e non deve sostituire i file SQLite personali.
+**Aggiornamento:** chiudere il programma, scaricare `RegistroOre_3_11_0_MAC_AGGIORNAMENTO.zip` e avviare con doppio clic `AGGIORNA_REGISTRO_ORE.command`. Questo pacchetto **non va usato per una prima installazione** e non deve sostituire i file SQLite personali.
 
 È richiesto Java 17+. Per un pacchetto non firmato macOS potrebbe richiedere un'apertura esplicita tramite le impostazioni di sicurezza: controllare la provenienza prima di autorizzare.
 
 ### Windows
 
-Scaricare `installers/windows/RegistroOre_3_10_3_Windows_x64.zip`, decomprimere in una cartella locale e fare doppio clic su **RegistroOre.exe**. Al primo avvio il launcher può richiedere Internet per il runtime Java. In presenza di SmartScreen verificare provenienza e checksum prima di procedere.
+Scaricare `installers/windows/RegistroOre_3_11_0_Windows_x64.zip`, decomprimere in una cartella locale e fare doppio clic su **RegistroOre.exe**. Al primo avvio il launcher può richiedere Internet per il runtime Java. In presenza di SmartScreen verificare provenienza e checksum prima di procedere.
 
 ### Linux Mint
 
-Scaricare `installers/linux/RegistroOre_3_10_3_LinuxMint_amd64.deb`, aprire con il gestore pacchetti e installare. In alternativa estrarre lo ZIP portabile ed eseguire `AVVIA_REGISTRO_ORE.sh`. Java 17+ è richiesto.
+Scaricare `installers/linux/RegistroOre_3_11_0_LinuxMint_amd64.deb`, aprire con il gestore pacchetti e installare. In alternativa estrarre lo ZIP portabile ed eseguire `AVVIA_REGISTRO_ORE.sh`. Java 17+ è richiesto.
 
 ## 2. Primo avvio e Profilo
 
@@ -85,7 +86,7 @@ Controllare sempre il totale annuale e la distribuzione giornaliera prima di inv
 
 Usare **+ Più giorni** per selezionare una stessa attività, definire le ore per data e scegliere più giornate dal calendario. L'operazione è soggetta a verifica preventiva di mesi bloccati, sospensioni e limite annuo. Se una delle date non è consentita, il salvataggio in blocco viene respinto.
 
-### Posizione conservata dopo il salvataggio (novità 3.10.3)
+### Posizione conservata dopo il salvataggio (novità 3.11.0)
 
 Nel **Registro mensile**, quando modifichi il nome di un'attività, le ore o una nota, oppure elimini una registrazione, il calendario **rimane sullo stesso giorno e nella stessa posizione dello scorrimento**. Non torna più automaticamente al primo giorno del mese. Anche se la giornata cambia altezza per l'aggiunta o la rimozione di una voce, la posizione visiva viene compensata.
 
@@ -95,18 +96,17 @@ Le righe selezionate vengono evidenziate. Se un elemento è bloccato, il program
 
 ## 6. Attività e categorie
 
-Ogni attività ha **una sola categoria corrente**, modificabile da **Gestione → Attività**. Le categorie sono gestibili da **Gestione → Categorie**; non esiste una gerarchia obbligatoria di gruppi principali e sottogruppi.
+**Le categorie sono nove e predefinite**. Non è più necessario creare una categoria personalizzata e assegnarle un'ulteriore «regola operativa»: ora ciascuna Categoria comprende già i propri criteri di controllo. Le nove voci sono riportate in **Gestione → Categorie**, nella **Guida alle categorie** e nella sezione laterale **Rendicontazione**. Vedere [guida dettagliata](CATEGORIE_E_SOSPENSIONI.md).
 
-La categoria possiede una **regola operativa** tecnica: fra gli esempi, didattica frontale, integrativa, progetti, altre attività e attività ordinaria. Questa regola governa i controlli e i riepiloghi.
+Quando si crea un’attività in **Gestione → Attività**, indicare un nome e una sola delle nove categorie. La singola attività può essere modificata, archiviata e ripristinata. Per esempio: GATT → Ricerca su progetti finanziati; «Valutazione dottorandi» → Commissioni; «Presentazione paper» → Ricerca istituzionale, oppure Progetti se il lavoro è effettivamente imputabile al finanziamento.
 
-Se cambi categoria a un'attività con ore già registrate, puoi scegliere fra:
+**Sospensioni delle lezioni:** non coincidono con ferie, malattia o chiusure di Ateneo. La didattica frontale richiede una deroga motivata su giornate sospese, le commissioni e l’integrativa una verifica, altre categorie sono ordinariamente consentite nei limiti applicabili. Le motivazioni non sostituiscono autorizzazioni o regole degli uffici competenti.
 
-- **Solo nuove registrazioni:** le vecchie ore mantengono la categoria storica.
-- **Anche registrazioni precedenti:** la riclassificazione è retroattiva, ma può essere negata per periodi/progetti bloccati.
+**Cambio categoria di un’attività con ore già registrate:** è possibile conservarne la categoria storica per le vecchie registrazioni, oppure richiedere una riclassificazione retroattiva quando consentita. Le mensilità bloccate impediscono modifiche ordinarie ai timesheet.
 
-La cancellazione di una categoria utilizzata richiede il trasferimento delle attività in un'altra categoria, quando consentito.
+**Migrazione dalla 3.10.3:** viene creato un backup prima della conversione. Il programma conserva le denominazioni precedenti delle categorie e segnala le associazioni incerte, da verificare nel riepilogo iniziale e nei report. Non elimina ore o progetti.
 
-### Archivio delle attività (3.10.3)
+### Archivio delle attività (3.11.0)
 
 In **Gestione → Attività** selezionare un'attività e premere **Archivia**. L'attività scompare dalle proposte per le nuove registrazioni e, se è un progetto, dall'elenco dei progetti attivi nella barra laterale. Tutti i timesheet, i collaboratori e gli allegati restano nel database e nei riepiloghi storici.
 
@@ -151,7 +151,7 @@ I documenti archiviati nel database sono inclusi nelle copie SQLite.
 
 ## 10. Riepiloghi e ricerche
 
-Usare **Riepilogo** per i totali per categoria e mese, **Rendicontazione** per ore/costi dei progetti e didattica, e **Cerca** per individuare le registrazioni di un'attività in un intervallo di date. Il periodo iniziale della ricerca è l'anno selezionato.
+Usare **Riepilogo** per i totali per categoria e mese, le nove voci sotto **Rendicontazione** per le rispettive categorie, **Schede Progetto** per ore/costi progettuali e **Cerca** per individuare le registrazioni di un'attività in un intervallo di date. Il periodo iniziale della ricerca è l'anno selezionato.
 
 Per i progetti, i report possono distinguere ore proprie, ore dei colleghi e costi basati sul ruolo alla data.
 
@@ -190,10 +190,18 @@ Non pubblicare mai su GitHub database personali, allegati, file di log, timeshee
 
 ## 14. Risoluzione dei problemi
 
-- **L'app non si avvia e appare `UnsupportedClassVersionError`:** verificare Java **17+**; la versione 3.10.3 è compilata per Java 17.
+- **L'app non si avvia e appare `UnsupportedClassVersionError`:** verificare Java **17+**; la versione 3.11.0 è compilata per Java 17.
 - **Non compaiono ore o un progetto:** controllare il **percorso del database effettivamente usato**, non ripristinare subito una copia.
 - **Un giorno o un mese non accetta ore:** controllare stato di sospensione, blocchi mensili, chiusura progetto e limite di 1.500 ore.
 - **Non riesci ad aprire un allegato:** provarne lo scaricamento e l'apertura esterna; l'anteprima Office è in parte testuale.
 - **Mac o Windows mostra avvisi di sicurezza:** controllare provenienza e checksum del file. Gli installer non sono firmati digitalmente.
 
 Per i report di bug, allegare soltanto messaggi d'errore **anonimizzati** e versione del sistema, non i database reali. Vedi [FAQ](FAQ.md).
+
+## 15. Missioni
+
+Le missioni sono **contesti di lavoro trasversali alle categorie**, non una decima categoria. Aprire **Gestione → Missioni** e utilizzare la scheda per memorizzare titolo, tipologia, ruolo, località, data iniziale e finale, conferenza, titolo del paper, DOI, eventuale progetto, autorizzazione e note. È possibile allegare documenti della missione. Tipologie indicative: conferenza scientifica, presentazione paper, keynote, riunione di progetto, visita scientifica, formazione e commissione esterna.
+
+Una missione può comprendere più attività con categorie diverse. Per registrare le ore aprire **Registro**, selezionare l'attività e, se opportuno, associare una missione per la data. Se la registrazione è fuori dal periodo della missione, il salvataggio è impedito. **La missione non crea ore da sola**: evita quindi qualsiasi duplicazione. Per le ore di viaggio e l'imputazione al progetto consultare le regole del bando e le autorizzazioni dell'Ateneo.
+
+Non cancellare una missione già collegata a registrazioni: scollegare prima le ore nei periodi non bloccati e rispettare la conservazione dello storico.

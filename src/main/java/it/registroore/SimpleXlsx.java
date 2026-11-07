@@ -84,9 +84,10 @@ final class SimpleXlsx {
       "<col min=\"4\" max=\"4\" width=\"26\" customWidth=\"1\"/>"+
       "<col min=\"5\" max=\"5\" width=\"12\" customWidth=\"1\"/>"+
       "<col min=\"6\" max=\"6\" width=\"55\" customWidth=\"1\"/>"+
-      "<col min=\"7\" max=\"7\" width=\"22\" customWidth=\"1\"/></cols>"));
+      "<col min=\"7\" max=\"7\" width=\"22\" customWidth=\"1\"/>"+
+      "<col min=\"8\" max=\"8\" width=\"16\" customWidth=\"1\"/></cols>"));
     int r=1;s.append("<row r=\"1\" ht=\"27\" customHeight=\"1\">");
-    String[] headers={"Data","Giorno","Attività","Categoria","Ore","Note","Origine"};
+    String[] headers={"Data","Giorno","Attività","Categoria","Ore","Note","Origine","ID missione"};
     for(int i=0;i<headers.length;i++)s.append(col(String.valueOf((char)('A'+i)),r,1,headers[i]));
     s.append("</row>");
     double total=0;
@@ -95,12 +96,13 @@ final class SimpleXlsx {
       s.append(col("B",r,0,WEEK[e.date().getDayOfWeek().getValue()-1]));
       s.append(col("C",r,0,e.activity().name()));s.append(col("D",r,0,e.activity().category()));
       if(e.hours()!=null){total+=e.hours();s.append(number("E",r,3,e.hours()));}
-      s.append(col("F",r,0,e.note()));s.append(col("G",r,0,e.source()));s.append("</row>");
+      s.append(col("F",r,0,e.note()));s.append(col("G",r,0,e.source()));
+      s.append(col("H",r,0,e.missionId()==null?"":e.missionId().toString()));s.append("</row>");
     }
     int totalRow=r+2;
     s.append("<row r=\"").append(totalRow).append("\">").append(col("D",totalRow,1,"TOTALE ORE"))
       .append(number("E",totalRow,3,total)).append("</row>");
-    s.append("</sheetData><autoFilter ref=\"A1:G").append(Math.max(1,r)).append("\"/>"+
+    s.append("</sheetData><autoFilter ref=\"A1:H").append(Math.max(1,r)).append("\"/>"+
       "<pageMargins left=\"0.4\" right=\"0.4\" top=\"0.5\" bottom=\"0.5\" header=\"0.2\" footer=\"0.2\"/>"+
       "</worksheet>");
     return s.toString();

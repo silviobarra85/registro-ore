@@ -1,5 +1,16 @@
 # Changelog
 
+## v3.11.0 — 2026-11-07
+
+- Nove **Categorie** predefinite, senza secondo campo «Regola operativa». La rendicontazione usa le nove categorie; «Attività Ordinaria» non compare più come voce.
+- Descrizioni integrate in **Gestione → Guida alle categorie** e nel manuale: attività incluse/escluse e verifiche durante le sospensioni delle lezioni.
+- Validazione differenziata: didattica frontale normalmente bloccata su giorni sospesi o weekend salvo deroga motivata; didattica integrativa, commissioni e altre attività soggette a verifica; ricerca, attività istituzionali, terza missione e formazione ordinariamente ammesse salvo disposizioni specifiche.
+- Nuova gestione **Missioni** con periodo, località, tipologia, ruolo, convegno, paper, DOI, autorizzazione, progetto e documenti; collegamento facoltativo delle registrazioni, senza duplicare ore.
+- Migrazione conservativa delle categorie storiche con backup iniziale e traccia delle denominazioni precedenti. Le corrispondenze non sicure sono segnalate per revisione.
+- Mantenuti blocchi mensili, condizioni di progetto, archivio delle attività, durata dei progetti e gestione collaboratori.
+- Aggiornati installer, guida, FAQ, esportazioni e test.
+
+
 ## v3.10.3 — 2026-11-07
 
 ### Nuove funzionalità
