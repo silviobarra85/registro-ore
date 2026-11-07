@@ -6,7 +6,7 @@ labels: bug
 assignees: []
 ---
 
-**Versione dell'app:** 3.10.1
+**Versione dell'app:** 3.10.2
 
 **Sistema operativo:**
 

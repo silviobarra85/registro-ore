@@ -22,7 +22,7 @@ import java.awt.datatransfer.StringSelection;
 
 /** Registro ore accademico multiannuale. Desktop Swing + SQLite su file. */
 public final class App extends JFrame {
-  private static final String VERSION = "3.10.1";
+  private static final String VERSION = "3.10.2";
   private static final int DEFAULT_YEAR = 2026;
   private static final double YEAR_LIMIT = 1500.0;
   private static final String UNSET_ROLE = "Da impostare";
@@ -46,6 +46,59 @@ public final class App extends JFrame {
   private JComboBox<Integer> yearPicker;
   private JPanel sidebarView;
   private JScrollPane sidebarProjectsScroll;
+  // Mantiene fermo il giorno visualizzato quando il Registro viene aggiornato dopo un salvataggio.
+  // I pannelli vengono ricreati, ma si conserva il loro offset nel viewport.
+  private JScrollPane registerScroll;
+  private final Map<LocalDate,JPanel> registerDayCards = new HashMap<>();
+  private record RegisterViewport(LocalDate anchorDay, int dayOffset, int oldScrollY) {}
+
+  private RegisterViewport captureRegisterViewport() {
+    if (!"Registro".equals(page) || registerScroll == null) return null;
+    JViewport viewport = registerScroll.getViewport();
+    int scrollY = viewport.getViewPosition().y;
+    int height = viewport.getExtentSize().height;
+    JPanel target = registerDayCards.get(chosen);
+    LocalDate anchor = chosen;
+    // Il giorno modificato e' l'ancora preferita, se e' visibile nello schermo attuale.
+    if (target == null || target.getY() >= scrollY + height || target.getY() + target.getHeight() <= scrollY) {
+      anchor = null;
+      for (var entry : registerDayCards.entrySet()) {
+        JPanel card = entry.getValue();
+        if (card.getY() + card.getHeight() > scrollY && card.getY() < scrollY + height &&
+          (anchor == null || entry.getKey().isBefore(anchor))) anchor = entry.getKey();
+      }
+      target = anchor == null ? null : registerDayCards.get(anchor);
+    }
+    return new RegisterViewport(anchor, target == null ? 0 : target.getY() - scrollY, scrollY);
+  }
+
+  // Calcolo isolato: se le altezze delle giornate prima dell'ancora cambiano,
+  // compensa tale variazione preservando l'offset visivo del giorno selezionato.
+  static int registerViewportTarget(int oldY, int anchorY, int anchorOffset, int maxScroll, boolean anchored) {
+    long candidate = anchored ? (long)anchorY - anchorOffset : oldY;
+    return (int)Math.max(0, Math.min((long)maxScroll, candidate));
+  }
+
+  private void restoreRegisterViewport(RegisterViewport saved) {
+    if (saved == null || !"Registro".equals(page) || registerScroll == null) return;
+    // Differire la posizione dopo il layout della nuova lista: Swing non conosce
+    // l'altezza delle schede finche' la vista non e' stata misurata.
+    JScrollPane scroll = registerScroll;
+    JPanel anchor = saved.anchorDay() == null ? null : registerDayCards.get(saved.anchorDay());
+    SwingUtilities.invokeLater(() -> {
+      if (scroll != registerScroll || !"Registro".equals(page)) return;
+      JViewport viewport = scroll.getViewport();
+      Component view = viewport.getView();
+      if (view == null) return;
+      // Assicura un layout valido prima di leggere la posizione della scheda.
+      view.setSize(Math.max(view.getWidth(), viewport.getExtentSize().width), view.getPreferredSize().height);
+      if (view instanceof Container container) container.doLayout();
+      int max = Math.max(0, view.getHeight() - viewport.getExtentSize().height);
+      int y = registerViewportTarget(saved.oldScrollY(), anchor == null ? 0 : anchor.getY(), saved.dayOffset(), max, anchor != null);
+      viewport.setViewPosition(new Point(0, y));
+    });
+  }
+
   private boolean sidebarCollapsed=Preferences.userNodeForPackage(App.class).getBoolean("sidebarCollapsed",false);
   private final Map<String,Boolean> openNavigationSections=new HashMap<>();
   private final Map<String,List<String>> sectionPages=new LinkedHashMap<>();
@@ -319,7 +372,7 @@ public final class App extends JFrame {
   private JPanel appFooter(){
     JPanel foot=new JPanel(new BorderLayout());foot.setBackground(new Color(236,241,247));
     foot.setBorder(new CompoundBorder(new MatteBorder(1,0,0,0,LINE),new EmptyBorder(6,18,7,21)));
-    JLabel copyright=new JLabel("© " + Year.now().getValue() + " Silvio Barra, DIETI, UNINA & ChatGPT  ·  Registro Ore v" + VERSION);
+    JLabel copyright=new JLabel("© " + Year.now().getValue() + " Silvio Barra (DIETI-UNINA) & ChatGPT  ·  Registro Ore v" + VERSION);
     copyright.setFont(new Font("SansSerif",Font.PLAIN,10));
     copyright.setForeground(new Color(111,125,142));
     foot.add(copyright,BorderLayout.EAST);
@@ -367,7 +420,11 @@ public final class App extends JFrame {
     refreshProfileHeader();updateLastSave();
     Map<LocalDate,List<LogEntry>> index=new HashMap<>();for(LogEntry e:logs)index.computeIfAbsent(e.date(), k->new ArrayList<>()).add(e);byDate=index;
   }
-  private void changed() {try{reload();refreshSidebar();showPage(page);}catch(Exception ex){error(ex);} }
+  private void changed() {
+    RegisterViewport saved = captureRegisterViewport();
+    try {reload();refreshSidebar();showPage(page);restoreRegisterViewport(saved);}
+    catch(Exception ex){error(ex);}
+  }
   private void showPage(String name){
     page=name;pageTitle.setText(switch(name){case "Calendario"->"Panoramica annuale";case "Registro"->"Registro mensile";case "Cerca"->"Ricerca registrazioni";case "Riepilogo"->"Riepilogo delle ore";case "Progetti"->"Progetti e valorizzazione";case "Didattica Frontale"->"Didattica frontale";case "Didattica Integrativa"->"Didattica integrativa";case "Attività"->"Anagrafica delle attività";case "Categorie"->"Gestione delle categorie";case "Sospensioni"->"Giorni di sospensione";case "Annualità"->"Annualità e mesi bloccati";case "Profilo"->"Profilo docente e costo orario";case "Scheda progetto"->"Scheda del progetto";case "Backup e ripristino"->"Backup automatici e ripristino";case "Storico modifiche"->"Cronologia delle modifiche";case "Attività Ordinaria"->"Attività ordinaria";default->"Note e promemoria";});
     for(var n:navigation.entrySet()){boolean active=n.getKey().equals(name);n.getValue().setBackground(active?ORANGE:NAVY);n.getValue().setForeground(active?NAVY:WHITE);}
@@ -449,6 +506,7 @@ public final class App extends JFrame {
     boolean monthLocked=false;try{monthLocked=store.isMonthLocked(selectedYear,chosen.getMonthValue());}catch(Exception ex){error(ex);}
     final boolean locked=monthLocked;add.setEnabled(!locked); // "Più giorni" può operare su altri mesi aperti.
     JPanel days=new JPanel();days.setLayout(new BoxLayout(days,BoxLayout.Y_AXIS));days.setBackground(BG);
+    registerDayCards.clear();
     LocalDate first=chosen.withDayOfMonth(1);
     for(int day=1;day<=first.lengthOfMonth();day++){
       LocalDate date=first.withDayOfMonth(day);List<LogEntry> daily=byDate.getOrDefault(date,List.of());
@@ -482,7 +540,7 @@ public final class App extends JFrame {
         edit.setToolTipText(lockReason.isBlank()?"Modifica la registrazione":"Modifica disabilitata: "+lockReason);
         delete.setToolTipText(lockReason.isBlank()?"Elimina la registrazione":"Eliminazione disabilitata: "+lockReason);
         edit.addActionListener(e->{chosen=date;entryEditor(entry,date);});
-        delete.addActionListener(e->{if(ask("Eliminare "+entry.activity().name()+" del "+date.format(DISPLAY)+"?")){try{store.deleteEntry(entry.id());changed();}catch(Exception ex){error(ex);}}});
+        delete.addActionListener(e->{if(ask("Eliminare "+entry.activity().name()+" del "+date.format(DISPLAY)+"?")){try{store.deleteEntry(entry.id());chosen=date;changed();}catch(Exception ex){error(ex);}}});
         tools.add(edit);tools.add(delete);row.add(tools,BorderLayout.EAST);
         Runnable highlight=()->{for(Component component:entries.getComponents())if(component instanceof JPanel rr){rr.setBackground(WHITE);rr.setBorder(new EmptyBorder(5,12,5,12));}
           row.setBackground(new Color(216,232,255));row.setBorder(new CompoundBorder(new LineBorder(SELECT_BG,2,true),new EmptyBorder(3,10,3,10)));};
@@ -491,9 +549,9 @@ public final class App extends JFrame {
         edit.addActionListener(e->highlight.run());delete.addActionListener(e->highlight.run());
         entries.add(row);
       }
-      card.add(entries,BorderLayout.CENTER);days.add(card);days.add(Box.createVerticalStrut(7));
+      card.add(entries,BorderLayout.CENTER);registerDayCards.put(date,card);days.add(card);days.add(Box.createVerticalStrut(7));
     }
-    JScrollPane scroll=new JScrollPane(days);scroll.setBorder(null);scroll.getViewport().setBackground(BG);scroll.getVerticalScrollBar().setUnitIncrement(24);p.add(scroll,BorderLayout.CENTER);
+    JScrollPane scroll=new JScrollPane(days);scroll.setBorder(null);scroll.getViewport().setBackground(BG);scroll.getVerticalScrollBar().setUnitIncrement(24);registerScroll=scroll;p.add(scroll,BorderLayout.CENTER);
     double monthHours=logs.stream().filter(e->e.date().getMonthValue()==chosen.getMonthValue()&&e.hours()!=null).mapToDouble(e->e.hours()).sum();
     p.add(label("Totale "+MONTHS[chosen.getMonthValue()-1]+": "+fmt(monthHours)+" ore"+(locked?"  •  MENSILITÀ BLOCCATA":"  •  Puoi aggiungere più attività in ogni giornata"),13,true),BorderLayout.SOUTH);
     return p;

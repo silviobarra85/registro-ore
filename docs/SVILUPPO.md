@@ -24,7 +24,7 @@ Per avviare localmente il JAR serve un database inizializzato, per esempio una *
 ```bash
 mkdir -p data
 cp database_vuoto.sqlite data/registro_ore_2026.sqlite
-java -Dregistro.db="$(pwd)/data/registro_ore_2026.sqlite" -jar target/registro-ore-3.10.1.jar
+java -Dregistro.db="$(pwd)/data/registro_ore_2026.sqlite" -jar target/registro-ore-3.10.2.jar
 ```
 
 > L'app può aggiornare lo schema SQL al primo avvio: non puntare mai un esperimento al database personale.
@@ -45,3 +45,7 @@ Il workflow `.github/workflows/java-ci.yml` effettua soltanto la compilazione Ma
 ## Dipendenze
 
 Si trovano in `pom.xml`. Prima della distribuzione estesa valutare aggiornamenti di sicurezza e le licenze delle dipendenze: in particolare PDFBox **1.8.16** è una versione storica, da rivedere prima di una futura major release.
+
+## Licenza del progetto
+
+Il codice originale di Registro Ore è distribuito con licenza MIT (vedere [`LICENSE`](../LICENSE)). Le dipendenze esterne elencate in `pom.xml` e i relativi componenti redistribuiti hanno licenze proprie, che devono essere rispettate in fase di packaging.

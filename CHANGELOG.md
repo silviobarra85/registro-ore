@@ -1,5 +1,16 @@
 # Changelog
 
+## v3.10.2 — 2026-11-07
+
+- Uniformati i crediti pubblici a Silvio Barra (DIETI-UNINA) e chiarita la documentazione utente.
+- Pubblicato il codice originale con licenza MIT.
+
+- **Registro mensile:** corretto il ritorno automatico al primo giorno del mese dopo aver modificato un'attività, variato le ore o eliminato una registrazione.
+- La vista conserva il giorno visibile e la posizione verticale originale, compensando le variazioni di altezza delle righe.
+- Nessuna migrazione del database richiesta; formule, ore, allegati, progetti e backup invariati.
+- Aggiunto test automatico della logica di ripristino dello scorrimento (`RegistroViewportTest`).
+- Aggiornati gli installer per macOS, Windows 10/11 e Linux Mint, la documentazione e i checksum.
+
 ## v3.10.1 — 2026-11-06
 
 - Correzione delle icone della barra laterale: sostituite con grafica vettoriale Java2D, indipendente dal font del sistema.

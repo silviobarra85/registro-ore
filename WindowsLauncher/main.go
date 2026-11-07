@@ -23,7 +23,7 @@ import (
 
 //go:embed assets/RegistroOre.jar assets/database_vuoto.sqlite
 var assets embed.FS
-const version = "3.8.0"
+const version = "3.10.2"
 
 func popup(message string) {
  user32 := syscall.NewLazyDLL("user32.dll")

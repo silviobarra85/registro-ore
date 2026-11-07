@@ -1,4 +1,4 @@
-# FAQ — Registro Ore 3.10.1
+# FAQ — Registro Ore 3.10.2
 
 **Dove si trovano le ore?** Nel database SQLite locale. Il percorso effettivo è visualizzato in basso a sinistra e in **Sistema → Stato database**.
 
@@ -18,6 +18,6 @@
 
 **Non vedo un vecchio progetto: è perso?** Non necessariamente: controllare il percorso del database e confrontare le copie prima di ripristinare.
 
-**Posso usare il codice per creare una versione mia?** Il repository è pubblico ma il diritto di modifica e redistribuzione dipende dalla licenza scelta dal titolare. Consultare `LICENZA_DA_SCEGLIERE.md`.
+**Posso usare il codice per creare una versione mia?** Sì. Il codice originale è distribuito con [licenza MIT](../LICENSE): puoi usarlo, modificarlo e redistribuirlo, mantenendo la nota di copyright e il testo della licenza. Le dipendenze di terze parti hanno licenze proprie.
 
 **Segnalazione bug:** usare le GitHub Issues senza inserire dati personali o documenti dei progetti.

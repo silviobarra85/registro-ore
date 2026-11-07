@@ -19,3 +19,5 @@ jobs:
           cache: maven
       - name: Compila sorgenti
         run: mvn -B -ntp -DskipTests clean package
+      - name: Regression test - posizione del Registro
+        run: java -cp target/test-classes:target/registro-ore-3.10.2.jar it.registroore.RegistroViewportTest

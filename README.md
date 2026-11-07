@@ -1,24 +1,26 @@
-# Registro Ore · v3.10.1
+# Registro Ore · v3.10.2
 
 <p align="center"><img src="assets/registro-ore-icon.png" alt="Icona Registro Ore" width="128"></p>
 
 **Applicazione desktop per registrare, pianificare e rendicontare le ore di didattica, attività istituzionali e progetti di ricerca.**
 
-Disponibile per **macOS, Windows 10/11 (64 bit)** e **Linux Mint (64 bit)**. È realizzata in Java Swing e usa un **database SQLite locale**, senza server. Questa distribuzione è la versione **3.10.1**.
+Disponibile per **macOS, Windows 10/11 (64 bit)** e **Linux Mint (64 bit)**. È realizzata in Java Swing e usa un **database SQLite locale**, senza server. Questa distribuzione è la versione **3.10.2**.
 
-> **Privacy:** i pacchetti pubblici contengono soltanto un *database vergine*, senza registrazioni o documenti personali. **Non pubblicare mai il tuo database di lavoro**, i backup, i timesheet o file riservati nel repository.
+**Dati personali:** i pacchetti distribuiti includono un database iniziale privo di registrazioni, progetti, colleghi e allegati. Le registrazioni di ciascun utente rimangono nel database locale e non vengono trasmesse al repository.
 
 ## Scarica e installa
 
 | Sistema | Prima installazione | Aggiornamento / alternativa |
 |---|---|---|
-| **macOS** | [Installazione vergine (.zip)](installers/macos/RegistroOre_3_10_1_MAC_VERGINE.zip) | [Aggiornamento con doppio clic (.zip)](installers/macos/RegistroOre_3_10_1_MAC_AGGIORNAMENTO.zip) |
-| **Windows 10/11 x64** | [Applicazione (.zip)](installers/windows/RegistroOre_3_10_1_Windows_x64.zip) | Sostituire l'eseguibile solo dopo un backup |
-| **Linux Mint x64** | [Pacchetto (.deb)](installers/linux/RegistroOre_3_10_1_LinuxMint_amd64.deb) | [Versione portabile (.zip)](installers/linux/RegistroOre_3_10_1_LinuxMint_Portabile.zip) |
+| **macOS** | [Installazione vergine (.zip)](installers/macos/RegistroOre_3_10_2_MAC_VERGINE.zip) | [Aggiornamento con doppio clic (.zip)](installers/macos/RegistroOre_3_10_2_MAC_AGGIORNAMENTO.zip) |
+| **Windows 10/11 x64** | [Applicazione (.zip)](installers/windows/RegistroOre_3_10_2_Windows_x64.zip) | Sostituire l'eseguibile solo dopo un backup |
+| **Linux Mint x64** | [Pacchetto (.deb)](installers/linux/RegistroOre_3_10_2_LinuxMint_amd64.deb) | [Versione portabile (.zip)](installers/linux/RegistroOre_3_10_2_LinuxMint_Portabile.zip) |
 
-Dopo la pubblicazione è consigliabile caricare gli stessi file nella **[pagina Releases](../../releases)**, che consente di scegliere rapidamente il download corretto per il sistema operativo.
+Le versioni distribuite sono disponibili anche nella **[sezione Releases](../../releases)**.
 
 **Requisiti:** JRE/JDK **Java 17+** per Mac e Linux. Su Windows il launcher usa una Java Runtime compatibile, se presente, o può predisporla alla prima esecuzione (serve Internet). Gli eseguibili non sono firmati digitalmente: macOS e Windows possono richiedere un'autorizzazione di sicurezza.
+
+**Novità 3.10.2:** nel Registro, dopo una modifica o cancellazione, resti sullo stesso giorno senza perdere la posizione nello scorrimento.
 
 ## Funzioni principali
 
@@ -39,10 +41,8 @@ Queste funzioni sono strumenti di gestione: **controllare sempre la conformità 
 - [Guida all'installazione e aggiornamento](docs/INSTALLAZIONE_E_AGGIORNAMENTO.md)
 - [Domande frequenti e risoluzione problemi](docs/FAQ.md)
 - [Struttura del progetto e sviluppo](docs/SVILUPPO.md)
-- [Come pubblicare e mantenere il repository su GitHub](docs/PUBBLICAZIONE_GITHUB.md)
 - [Privacy e sicurezza dei dati](SECURITY.md)
 - [Note di versione](CHANGELOG.md)
-- [Checklist prima di pubblicare](docs/CHECKLIST_PUBBLICAZIONE.md)
 - [Installer e checksum](installers/README.md)
 
 ## Dove vengono salvati i dati?
@@ -65,12 +65,12 @@ mvn clean package
 
 L'applicazione Java compilata usa le dipendenze dichiarate in `pom.xml`. L'avvio completo richiede un database inizializzato e il percorso fornito con `-Dregistro.db=...`; vedi [guida sviluppo](docs/SVILUPPO.md). Il launcher Windows è descritto in `WindowsLauncher/`.
 
-## Autore e attribuzione
+## Licenza, autore e attribuzione
 
-**© 2026 Silvio Barra, DIETI, UNINA & ChatGPT · Registro Ore v3.10.1**
+**© 2026 Silvio Barra (DIETI-UNINA) & ChatGPT · Registro Ore v3.10.2**
 
-Il riconoscimento riportato nell'interfaccia descrive il progetto e il contributo di sviluppo. Non implica un'approvazione istituzionale o una collaborazione ufficiale delle organizzazioni citate.
+Autore: **Silvio Barra (DIETI-UNINA)**. Progetto sviluppato con il supporto di ChatGPT. La dicitura non implica un patrocinio ufficiale da parte delle organizzazioni citate.
 
-**Licenza:** prima di dichiarare il progetto *open source* scegliere e aggiungere una licenza esplicita; vedi [LICENZA_DA_SCEGLIERE.md](LICENZA_DA_SCEGLIERE.md). Rendere pubblico un repository non equivale automaticamente a concedere diritti di riutilizzo.
+**Licenza:** il codice originale di Registro Ore è distribuito con **licenza MIT**. Il testo completo è disponibile nel file [LICENSE](LICENSE). La licenza permette utilizzo, modifica e redistribuzione, mantenendo la nota di copyright e il testo della licenza. Le librerie di terze parti conservano le rispettive licenze.
 
 > Software distribuito senza garanzie di conformità amministrativa, fiscale o legale. Verificare le esportazioni prima di inviarle agli uffici competenti.

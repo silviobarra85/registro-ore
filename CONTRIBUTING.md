@@ -8,4 +8,4 @@ Grazie per l'interesse. Prima di proporre modifiche:
 4. Per cambiamenti al database, fornire uno script/migrazione compatibile con i dati storici e indicare come ripristinare un backup.
 5. Verificare la compatibilità con Java 17; il codice si compila via Maven.
 
-La manutenzione della versione pubblica e l'accettazione delle modifiche dipendono dal titolare del repository e dalle condizioni di licenza che verranno adottate.
+Il progetto è distribuito con [licenza MIT](LICENSE). Le proposte sono valutate dai manutentori; i contributi accettati sono distribuiti con la stessa licenza, salvo accordi differenti espliciti.

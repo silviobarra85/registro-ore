@@ -39,3 +39,13 @@ dist/
 *.p12
 *.pfx
 config/db_path.txt
+
+# Appunti e documenti privati dei manutentori (fuori dal repository)
+GUIDA_PERSONALE*
+ISTRUZIONI_PERSONALI*
+NOTE_PRIVATE*
+PRIVATE_*
+*_PERSONALE.md
+*_PRIVATO.md
+.secrets/
+
