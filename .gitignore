@@ -1,0 +1,41 @@
+# IDE e compilazione
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+target/
+build/
+dist/
+*.class
+*.jar
+*.log
+
+# Dati utenti, backup ed esportazioni
+*.sqlite
+*.sqlite3
+*.db
+*.db3
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite-journal
+!database_vuoto.sqlite
+**/data/
+**/backup*/
+**/logs/
+*.csv
+*.xlsx
+*.pdf
+*.docx
+*.pptx
+*.bak
+*.tmp
+
+# Config e credenziali
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+config/db_path.txt
