@@ -1,5 +1,14 @@
 # Registro Ore — Cronologia versioni
 
+## 3.11.2 — Calendario più leggibile e variazioni rapide
+
+- Finestra «Più giorni» più larga, ridimensionabile e adattiva: due mesi affiancati su schermi ampi, una colonna negli spazi ridotti. Celle più alte e ore non separabili su una riga.
+- Nel Registro pulsanti `−` e `+` direttamente accanto alle ore: variazione di 30 minuti senza dialoghi ordinari.
+- Aggiornamento atomico della sola quantità, senza modificare note, attività, categoria storica, origine o missione; mantenute le protezioni di mesi/progetti bloccati, 24 ore giornaliere e 1.500 ore annuali.
+- Il pulsante `−` non cancella automaticamente una registrazione: per arrivare a zero usare Modifica o Elimina. Per ore in sospensione soggette a motivazione si usa Modifica.
+- Nessuna migrazione del database; pacchetti di aggiornamento e installer per macOS, Windows e Linux Mint.
+
+
 ## 3.11.1 — Inserimento su più giorni
 
 - Somma le ore su registrazioni già presenti per la stessa attività e data, quando missione, categoria storica e origine sono compatibili. Consolidamento atomico delle righe compatibili senza perdere le note.

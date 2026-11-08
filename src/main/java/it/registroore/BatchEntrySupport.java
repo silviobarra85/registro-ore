@@ -33,8 +33,10 @@ final class BatchEntrySupport {
     double daily = total(rows);
     String quantity = !activity.isBlank() ? (matched > 0 ? hours(matched) + " h" : "—")
         : (daily > 0 ? "Σ " + hours(daily) + " h" : "—");
-    return "<html><center>" + (selected ? "&#10003; " : "") + day.getDayOfMonth()
-        + "<br><small>" + quantity + "</small></center></html>";
+    // Spazi non separabili: Swing HTML non deve spezzare "Σ 7 h" su tre righe.
+    String compact = quantity.replace(" ", "&nbsp;");
+    return "<html><center>" + (selected ? "&#10003;&nbsp;" : "") + day.getDayOfMonth()
+        + "<br><font size='3'>" + compact + "</font></center></html>";
   }
 
   static String escaped(String raw) {

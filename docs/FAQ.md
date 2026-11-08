@@ -1,4 +1,4 @@
-# FAQ — Registro Ore 3.11.1
+# FAQ — Registro Ore 3.11.2
 
 **Dove si trovano le ore?** Nel database SQLite locale. Il percorso effettivo è visualizzato in basso a sinistra e in **Sistema → Stato database**.
 
@@ -54,3 +54,11 @@ Scegli un'attività: sotto ogni data compare il totale di ore già registrate pe
 
 ### Posso leggere il Registro mentre scelgo più giorni?
 Sì, il selettore è una finestra non modale. Puoi spostarla e scorrere il Registro sottostante. Se modifichi le ore nel frattempo, premi «Aggiorna calendario» per sincronizzare l'anteprima prima di salvare.
+
+### Posso aggiungere o togliere mezz'ora senza aprire la finestra Modifica?
+
+Sì. Nel Registro il pulsante `+` aggiunge 0,5 ore e il pulsante `−` sottrae 0,5 ore alla singola registrazione. I pulsanti sono disabilitati quando la registrazione non è modificabile. `−` non elimina una riga a zero; per eliminarla usare il comando dedicato. I dati di missione e le note non vengono modificati.
+
+### Se nel calendario «Più giorni» le celle sono ancora piccole?
+
+Allarga la finestra (nei limiti del monitor); se la finestra viene ristretta, i mesi diventano una sola colonna. Ogni cella visualizza il numero del giorno e le ore su due righe distinte; passando il mouse si apre il dettaglio delle ore giornaliere.

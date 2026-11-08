@@ -1,29 +1,29 @@
-# Installazione e aggiornamento — Registro Ore 3.11.1
+# Installazione e aggiornamento — Registro Ore 3.11.2
 
 ## Scelta del pacchetto
 
 **Prima installazione:**
-- macOS: `installers/macos/RegistroOre_3_11_1_MAC_VERGINE.zip`
-- Windows 10/11 x64: `installers/windows/RegistroOre_3_11_1_Windows_x64.zip`
-- Linux Mint x64: `installers/linux/RegistroOre_3_11_1_LinuxMint_amd64.deb`
+- macOS: `installers/macos/RegistroOre_3_11_2_MAC_VERGINE.zip`
+- Windows 10/11 x64: `installers/windows/RegistroOre_3_11_2_Windows_x64.zip`
+- Linux Mint x64: `installers/linux/RegistroOre_3_11_2_LinuxMint_amd64.deb`
 
 **Installazione esistente:**
-- macOS: `installers/macos/RegistroOre_3_11_1_MAC_AGGIORNAMENTO.zip` (doppio clic sul file `.command` dopo l'estrazione).
-- Windows: usare `installers/windows/RegistroOre_3_11_1_Windows_AGGIORNAMENTO.zip`; lanciare `AGGIORNA_REGISTRO_ORE.cmd` dopo aver chiuso il programma. Il pacchetto contiene l’eseguibile completo e crea una copia di sicurezza del database locale.
-- Linux Mint: usare `installers/linux/RegistroOre_3_11_1_LinuxMint_AGGIORNAMENTO.zip` e avviare `AGGIORNA_REGISTRO_ORE.sh`, oppure installare il nuovo `.deb` con il gestore pacchetti. Il database personale rimane nella home; lo script crea un backup SQLite verificato prima dell’installazione.
+- macOS: `installers/macos/RegistroOre_3_11_2_MAC_AGGIORNAMENTO.zip` (doppio clic sul file `.command` dopo l'estrazione).
+- Windows: usare `installers/windows/RegistroOre_3_11_2_Windows_AGGIORNAMENTO.zip`; lanciare `AGGIORNA_REGISTRO_ORE.cmd` dopo aver chiuso il programma. Il pacchetto contiene l’eseguibile completo e crea una copia di sicurezza del database locale.
+- Linux Mint: usare `installers/linux/RegistroOre_3_11_2_LinuxMint_AGGIORNAMENTO.zip` e avviare `AGGIORNA_REGISTRO_ORE.sh`, oppure installare il nuovo `.deb` con il gestore pacchetti. Il database personale rimane nella home; lo script crea un backup SQLite verificato prima dell’installazione.
 
 ## Come verificare il download
 
 Il file `installers/SHA256SUMS.txt` contiene l'impronta SHA-256 di ogni installer. Su Mac/Linux, dalla radice del repository:
 
 ```bash
-shasum -a 256 installers/macos/RegistroOre_3_11_1_MAC_VERGINE.zip
+shasum -a 256 installers/macos/RegistroOre_3_11_2_MAC_VERGINE.zip
 ```
 
 Confrontare l'hash stampato con la voce corrispondente in `installers/SHA256SUMS.txt`. Su Windows usare PowerShell:
 
 ```powershell
-Get-FileHash .\installers\windows\RegistroOre_3_11_1_Windows_x64.zip -Algorithm SHA256
+Get-FileHash .\installers\windows\RegistroOre_3_11_2_Windows_x64.zip -Algorithm SHA256
 ```
 
 ## Prima di aggiornare un database esistente
@@ -53,3 +53,7 @@ Aprire **Gestione → Guida alle categorie** per controllare le nuove definizion
 ## Aggiornamento 3.11.1
 
 Non sono previste modifiche allo schema SQLite. Prima di installare, chiudere l'app e fare una copia del database. L'inserimento su più giorni **aggiunge** le nuove ore alle righe compatibili già presenti nella stessa data. Le righe con missioni diverse o classificazioni storiche incompatibili non vengono fuse. Non modifica automaticamente le registrazioni pregresse: il consolidamento avviene solo quando viene eseguito un nuovo inserimento multiplo.
+
+## Aggiornamento 3.11.2
+
+Non cambia lo schema del database. La nuova finestra «Più giorni» è più ampia e il Registro ha comandi `−`/`+` per variazioni rapide di 30 minuti. Prima di aggiornare chiudere l'applicazione, creare una copia di sicurezza SQLite verificata e installare i nuovi binari. Per Windows usare il pacchetto `Windows_AGGIORNAMENTO`, per Linux `LinuxMint_AGGIORNAMENTO`, per macOS `MAC_AGGIORNAMENTO`.

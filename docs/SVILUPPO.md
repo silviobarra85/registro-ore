@@ -24,7 +24,7 @@ Per avviare localmente il JAR serve un database inizializzato, per esempio una *
 ```bash
 mkdir -p data
 cp database_vuoto.sqlite data/registro_ore_2026.sqlite
-java -Dregistro.db="$(pwd)/data/registro_ore_2026.sqlite" -jar target/registro-ore-3.11.1.jar
+java -Dregistro.db="$(pwd)/data/registro_ore_2026.sqlite" -jar target/registro-ore-3.11.2.jar
 ```
 
 > L'app può aggiornare lo schema SQL al primo avvio: non puntare mai un esperimento al database personale.
@@ -69,3 +69,9 @@ Sono presenti `CategoryTaxonomyTest`, `RegistroViewportTest` e `ProjectIdentityT
 `Store.saveEntriesBatch()` usa una transazione SQLite unica: ricerca per data, activity ID, missione, categoria storica e provenienza locale; conserva e combina le note, somma le ore alle righe compatibili e consolida eventuali doppioni. Le righe incompatibili rimangono separate. Prima di scrivere controlla 24 ore/giorno, 1.500 ore/anno, sospensioni e mesi bloccati; i trigger DB proteggono anche periodi e blocchi del progetto. Il nuovo `BatchEntrySupportTest` verifica i riepiloghi e il testo dei tooltip.
 
 Per Windows il file `RegistroOre.exe` contiene il JAR aggiornato, e viene ricompilato dal sorgente Go. Gli aggiornamenti Windows e Linux hanno pacchetti dedicati che effettuano backup prima di sostituire i binari; i dati rimangono nella directory utente.
+
+## Interfaccia 3.11.2
+
+`QuickHoursSupport` isola la validazione matematica della modifica rapida di 30 minuti; il metodo `Store.adjustEntryHours` esegue in transazione SQLite soltanto l'UPDATE del campo `hours`, ricontrollando la protezione del registro, i limiti giorno/anno e lasciando invariati note, missione e categoria storica. `QuickHoursSupportTest` verifica i casi limite.
+
+Per il calendario multi-giorno Swing, il `JDialog` usa fino a 1260 pixel in larghezza (adattati allo schermo) e il `GridLayout` passa da due a una colonna sotto 1080 pixel. `BatchEntrySupport.dayLabel` rende gli spazi del valore delle ore non separabili, impedendo righe verticali spezzate.

@@ -1,8 +1,8 @@
-# Manuale utente — Registro Ore 3.11.1
+# Manuale utente — Registro Ore 3.11.2
 
 **Destinatari:** docenti, ricercatori e collaboratori che devono registrare attività e rendicontare ore su progetti, didattica e altre attività.
 
-> Il manuale descrive la versione Java 3.11.1. Le etichette potrebbero variare leggermente secondo il sistema operativo. Conservare sempre una copia di sicurezza prima di importazioni e aggiornamenti.
+> Il manuale descrive la versione Java 3.11.2. Le etichette potrebbero variare leggermente secondo il sistema operativo. Conservare sempre una copia di sicurezza prima di importazioni e aggiornamenti.
 
 ## Indice
 
@@ -26,19 +26,19 @@
 
 ### macOS
 
-**Prima installazione:** scaricare `installers/macos/RegistroOre_3_11_1_MAC_VERGINE.zip`, decomprimere e fare doppio clic su `INSTALLA_REGISTRO_ORE.command`. La nuova applicazione verrà installata nella cartella applicativa prevista dallo script. Dopo l'installazione avviarla dal Finder.
+**Prima installazione:** scaricare `installers/macos/RegistroOre_3_11_2_MAC_VERGINE.zip`, decomprimere e fare doppio clic su `INSTALLA_REGISTRO_ORE.command`. La nuova applicazione verrà installata nella cartella applicativa prevista dallo script. Dopo l'installazione avviarla dal Finder.
 
-**Aggiornamento:** chiudere il programma, scaricare `RegistroOre_3_11_1_MAC_AGGIORNAMENTO.zip` e avviare con doppio clic `AGGIORNA_REGISTRO_ORE.command`. Questo pacchetto **non va usato per una prima installazione** e non deve sostituire i file SQLite personali.
+**Aggiornamento:** chiudere il programma, scaricare `RegistroOre_3_11_2_MAC_AGGIORNAMENTO.zip` e avviare con doppio clic `AGGIORNA_REGISTRO_ORE.command`. Questo pacchetto **non va usato per una prima installazione** e non deve sostituire i file SQLite personali.
 
 È richiesto Java 17+. Per un pacchetto non firmato macOS potrebbe richiedere un'apertura esplicita tramite le impostazioni di sicurezza: controllare la provenienza prima di autorizzare.
 
 ### Windows
 
-Scaricare `installers/windows/RegistroOre_3_11_1_Windows_x64.zip`, decomprimere in una cartella locale e fare doppio clic su **RegistroOre.exe**. Al primo avvio il launcher può richiedere Internet per il runtime Java. In presenza di SmartScreen verificare provenienza e checksum prima di procedere.
+Scaricare `installers/windows/RegistroOre_3_11_2_Windows_x64.zip`, decomprimere in una cartella locale e fare doppio clic su **RegistroOre.exe**. Al primo avvio il launcher può richiedere Internet per il runtime Java. In presenza di SmartScreen verificare provenienza e checksum prima di procedere.
 
 ### Linux Mint
 
-Scaricare `installers/linux/RegistroOre_3_11_1_LinuxMint_amd64.deb`, aprire con il gestore pacchetti e installare. In alternativa estrarre lo ZIP portabile ed eseguire `AVVIA_REGISTRO_ORE.sh`. Java 17+ è richiesto.
+Scaricare `installers/linux/RegistroOre_3_11_2_LinuxMint_amd64.deb`, aprire con il gestore pacchetti e installare. In alternativa estrarre lo ZIP portabile ed eseguire `AVVIA_REGISTRO_ORE.sh`. Java 17+ è richiesto.
 
 ## 2. Primo avvio e Profilo
 
@@ -89,6 +89,16 @@ Usare **+ Più giorni** per scegliere una singola attività, indicare le **ore d
 La finestra **Più giorni** è indipendente e **non blocca il Registro alle spalle**: si può spostarla e continuare a scorrere il mese sottostante per consultarlo.
 
 **Le ore vengono sommate** se, nello stesso giorno, esiste già un'attività corrispondente con la stessa missione e categoria storica. Le note delle righe compatibili sono conservate; le precedenti righe duplicate compatibili vengono consolidate in una sola. Se le registrazioni sono associate a **missioni diverse** (o hanno diversa provenienza/categoria storica), non vengono fuse, per evitare di perdere informazioni: restano righe separate. L'aggiunta è atomica, controlla i mesi/progetti bloccati, il tetto annuo e impedisce totali superiori a 24 ore giornaliere; il superamento delle 8 ore viene segnalato e richiede conferma.
+
+### Variazioni rapide delle ore (3.11.2)
+
+Nel **Registro mensile** ogni registrazione con ore modificabili dispone dei pulsanti **`−`** e **`+`** accanto al monte ore. Ogni clic sottrae o aggiunge **30 minuti**, senza aprire una finestra e senza cambiare i dettagli della registrazione (attività, data, categoria storica, missione, note o provenienza). Il giorno resta nella stessa posizione dopo l'aggiornamento.
+
+Il pulsante `−` non cancella una riga: quando resterebbero 0 ore non è disponibile; usare **Modifica** o **Elimina** per le correzioni definitive. I comandi rapidi vengono disabilitati sui periodi o sui progetti bloccati. Se la sospensione delle lezioni richiede una verifica o deroga, il pulsante `+` non è disponibile: usare **Modifica** per confermare o motivare l'attività svolta. Restano attivi i limiti di 24 ore giornaliere e 1.500 ore annue; oltre 8 ore appare un avviso visuale.
+
+### Calendario «Più giorni» più leggibile (3.11.2)
+
+La finestra si apre più larga (nei limiti dell'area disponibile) e può essere ridimensionata. Con una finestra ampia mostra due mesi per riga; restringendola passa automaticamente a un mese per riga. I pulsanti dei giorni sono più alti e la dicitura delle ore non va a capo: in tal modo **numero del giorno e ore già registrate** sono leggibili senza sovrapposizioni. I tooltip con i dettagli rimangono disponibili.
 
 ### Posizione conservata dopo il salvataggio (novità 3.11.1)
 
@@ -194,7 +204,7 @@ Non pubblicare mai su GitHub database personali, allegati, file di log, timeshee
 
 ## 14. Risoluzione dei problemi
 
-- **L'app non si avvia e appare `UnsupportedClassVersionError`:** verificare Java **17+**; la versione 3.11.1 è compilata per Java 17.
+- **L'app non si avvia e appare `UnsupportedClassVersionError`:** verificare Java **17+**; la versione 3.11.2 è compilata per Java 17.
 - **Non compaiono ore o un progetto:** controllare il **percorso del database effettivamente usato**, non ripristinare subito una copia.
 - **Un giorno o un mese non accetta ore:** controllare stato di sospensione, blocchi mensili, chiusura progetto e limite di 1.500 ore.
 - **Non riesci ad aprire un allegato:** provarne lo scaricamento e l'apertura esterna; l'anteprima Office è in parte testuale.

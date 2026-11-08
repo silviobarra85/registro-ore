@@ -22,7 +22,7 @@ import java.awt.datatransfer.StringSelection;
 
 /** Registro ore accademico multiannuale. Desktop Swing + SQLite su file. */
 public final class App extends JFrame {
-  private static final String VERSION = "3.11.1";
+  private static final String VERSION = "3.11.2";
   private static final int DEFAULT_YEAR = 2026;
   private static final double YEAR_LIMIT = 1500.0;
   private static final String UNSET_ROLE = "Da impostare";
@@ -617,6 +617,25 @@ public final class App extends JFrame {
         row.add(description,BorderLayout.CENTER);
         JPanel tools=new JPanel(new FlowLayout(FlowLayout.RIGHT,7,0));tools.setOpaque(false);
         JLabel amount=label(fmt(entry.hours())+" h",14,true);amount.setOpaque(true);amount.setBackground(color(entry.activity().color()));amount.setBorder(new EmptyBorder(5,10,5,10));amount.setPreferredSize(new Dimension(64,29));tools.add(amount);
+        // Variazione rapida, senza aprire la finestra Modifica: 30 minuti per clic.
+        // Le protezioni dei timesheet e dei progetti vengono ricontrollate dal database.
+        JButton less=subtle("−"),more=subtle("+");
+        for(JButton button:List.of(less,more)){
+          button.setFont(new Font("SansSerif",Font.BOLD,15));
+          button.setMargin(new Insets(1,4,1,4));
+          button.setPreferredSize(new Dimension(32,29));
+        }
+        boolean editable=!locked && lockReason.isBlank() && entry.hours()!=null;
+        boolean suspendedReview=blocked(date) && CategoryTaxonomy.rule(entry.activity().category())!=null
+          && CategoryTaxonomy.rule(entry.activity().category()).suspension()!=CategoryTaxonomy.Suspension.ALLOW;
+        less.setEnabled(editable && entry.hours()>QuickHoursSupport.STEP+QuickHoursSupport.EPSILON);
+        more.setEnabled(editable && !suspendedReview && hoursToday+QuickHoursSupport.STEP<=24.000001);
+        less.setToolTipText(editable?"Sottrai 30 minuti senza eliminare la registrazione":"Modifica non consentita: "+lockReason);
+        more.setToolTipText(suspendedReview?"Per aggiungere ore in un giorno sospeso usa Modifica e verifica la motivazione":
+          editable?"Aggiungi 30 minuti (controlli del database attivi)":"Modifica non consentita: "+lockReason);
+        less.addActionListener(e->quickHoursChange(entry,-QuickHoursSupport.STEP));
+        more.addActionListener(e->quickHoursChange(entry,QuickHoursSupport.STEP));
+        tools.add(less);tools.add(more);
         JButton edit=subtle("Modifica"),delete=subtle("×");edit.setEnabled(!locked && lockReason.isBlank());delete.setEnabled(!locked && lockReason.isBlank());
         edit.setToolTipText(lockReason.isBlank()?"Modifica la registrazione":"Modifica disabilitata: "+lockReason);
         delete.setToolTipText(lockReason.isBlank()?"Elimina la registrazione":"Eliminazione disabilitata: "+lockReason);
@@ -637,6 +656,15 @@ public final class App extends JFrame {
     p.add(label("Totale "+MONTHS[chosen.getMonthValue()-1]+": "+fmt(monthHours)+" ore"+(locked?"  •  MENSILITÀ BLOCCATA":"  •  Puoi aggiungere più attività in ogni giornata"),13,true),BorderLayout.SOUTH);
     return p;
   }
+  /** Pulsanti +/- sulle righe: non alterano data, attività, missione, categoria o note. */
+  private void quickHoursChange(LogEntry entry,double delta){
+    try{
+      store.adjustEntryHours(entry.id(),delta);
+      chosen=entry.date();
+      changed(); // Riporta la riga modificata nella stessa posizione visiva.
+    }catch(Exception ex){error(ex);}
+  }
+
   private static JTable makeTable(AbstractTableModel model){JTable t=new JTable(model);t.setFont(new Font("SansSerif",Font.PLAIN,12));t.setRowHeight(30);t.setGridColor(new Color(234,239,246));t.setShowVerticalLines(false);t.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);t.setRowSelectionAllowed(true);t.setSelectionBackground(SELECT_BG);t.setSelectionForeground(WHITE);t.setShowHorizontalLines(true);t.setGridColor(LINE);t.getTableHeader().setBackground(NAVY);t.getTableHeader().setForeground(WHITE);t.getTableHeader().setFont(new Font("SansSerif",Font.BOLD,12));t.getTableHeader().setPreferredSize(new Dimension(30,38));t.setFillsViewportHeight(true);return t;}
   private boolean ask(String text){return JOptionPane.showConfirmDialog(this,text,"Conferma",JOptionPane.YES_NO_OPTION,JOptionPane.QUESTION_MESSAGE)==JOptionPane.YES_OPTION;}
   private void error(Exception e){e.printStackTrace();JOptionPane.showMessageDialog(this,e.getMessage(),"Errore",JOptionPane.ERROR_MESSAGE);}
@@ -706,7 +734,10 @@ public final class App extends JFrame {
     field(inputs,gc,"Ore da aggiungere per giorno",hours);
     field(inputs,gc,"Note",notes);field(inputs,gc,"Missione (facoltativa)",mission);
     main.add(inputs,BorderLayout.NORTH);
-    JPanel months=new JPanel(new GridLayout(0,2,9,9));months.setBackground(BG);
+    // Due mesi affiancati soltanto quando lo spazio è sufficiente.
+    // Il calendario passa a una colonna se l'utente ridimensiona la finestra.
+    GridLayout monthGrid=new GridLayout(0,2,14,14);
+    JPanel months=new JPanel(monthGrid);months.setBackground(BG);
     final Map<Integer,JPanel> monthCards=new HashMap<>();
     JLabel counter=label("Selezionati: 0 giorni",13,true);
     for(int month=1;month<=12;month++){
@@ -729,8 +760,8 @@ public final class App extends JFrame {
       List<JToggleButton> monthDays=new ArrayList<>();
       for(int day=1;day<=ym.lengthOfMonth();day++){
         LocalDate date=ym.atDay(day);
-        JToggleButton cell=new JToggleButton();cell.setFont(new Font("SansSerif",Font.PLAIN,10));
-        cell.setMargin(new Insets(0,0,0,0));cell.setPreferredSize(new Dimension(44,35));
+        JToggleButton cell=new JToggleButton();cell.setFont(new Font("SansSerif",Font.PLAIN,12));
+        cell.setMargin(new Insets(2,1,2,1));cell.setPreferredSize(new Dimension(68,54));
         cell.setFocusPainted(false);cell.setOpaque(true);
         cell.setContentAreaFilled(true);
         dayButtons.put(date,cell);idleColors.put(date,(weekend(date)||batchSuspensions.containsKey(date))?RED:WHITE);
@@ -753,7 +784,8 @@ public final class App extends JFrame {
       box.add(grid,BorderLayout.CENTER);months.add(box);
     }
     JScrollPane scroll=new JScrollPane(months);scroll.getVerticalScrollBar().setUnitIncrement(24);
-    scroll.setPreferredSize(new Dimension(730,335));scroll.setBorder(null);
+    scroll.setPreferredSize(new Dimension(1100,400));scroll.setBorder(null);
+    scroll.getHorizontalScrollBar().setUnitIncrement(22);
     main.add(scroll,BorderLayout.CENTER);
     JPanel footer=new JPanel(new BorderLayout(8,7));footer.setOpaque(false);
     JLabel warning=label("Il numero sotto il giorno indica le ore già presenti per l'attività scelta; passa il mouse per il dettaglio.",11,false);
@@ -831,10 +863,17 @@ public final class App extends JFrame {
     actions.add(counter);actions.add(reloadButton);actions.add(clear);actions.add(cancel);actions.add(save);
     footer.add(actions,BorderLayout.SOUTH);main.add(footer,BorderLayout.SOUTH);
     dialog.setContentPane(main);
-    dialog.setSize(Math.min(800,Toolkit.getDefaultToolkit().getScreenSize().width-40),
-      Math.min(740,Toolkit.getDefaultToolkit().getScreenSize().height-75));
-    // Aprire a lato del Registro: la finestra principale continua a ricevere lo scroll.
     Rectangle bounds=GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
+    dialog.setSize(Math.min(1260,Math.max(620,bounds.width-24)),
+      Math.min(890,Math.max(480,bounds.height-32)));
+    monthGrid.setColumns(dialog.getWidth()>=1080?2:1);
+    dialog.addComponentListener(new ComponentAdapter(){
+      @Override public void componentResized(ComponentEvent e){
+        int cols=dialog.getWidth()>=1080?2:1;
+        if(monthGrid.getColumns()!=cols){monthGrid.setColumns(cols);months.revalidate();months.repaint();}
+      }
+    });
+    // Aprire a lato del Registro: la finestra principale continua a ricevere lo scroll.
     int x=Math.max(bounds.x+8,Math.min(bounds.x+bounds.width-dialog.getWidth()-12,getX()+getWidth()-dialog.getWidth()+55));
     int y=Math.max(bounds.y+8,Math.min(bounds.y+bounds.height-dialog.getHeight()-12,getY()+35));
     dialog.setLocation(x,y);
@@ -2744,6 +2783,43 @@ public final class App extends JFrame {
         db.commit();
       }catch(SQLException|RuntimeException e){db.rollback();throw e;}finally{db.setAutoCommit(true);}
     }
+    /** Aggiornamento atomico della sola quantità di ore su una riga esistente.
+     * Non modifica note, provenienza, missione, attività o categoria storica.
+     */
+    void adjustEntryHours(int entryId,double delta) throws SQLException {
+      db.setAutoCommit(false);
+      try {
+        double current; LocalDate date; int activityId; String historicCategory;
+        try(PreparedStatement p=db.prepareStatement(
+            "SELECT e.hours,e.work_date,e.activity_id,COALESCE(e.category_snapshot,a.category) " +
+            "FROM entries e JOIN activities a ON a.id=e.activity_id WHERE e.id=?")) {
+          p.setInt(1,entryId);
+          try(ResultSet r=p.executeQuery()) {
+            if(!r.next())throw new IllegalArgumentException("Registrazione non trovata: ricarica il Registro.");
+            if(r.getObject(1)==null)throw new IllegalArgumentException("Questa riga non contiene ore modificabili.");
+            current=r.getDouble(1);date=LocalDate.parse(r.getString(2));
+            activityId=r.getInt(3);historicCategory=r.getString(4);
+          }
+        }
+        String restriction=entryRestriction(activityId,date,historicCategory);
+        if(!restriction.isBlank())throw new IllegalArgumentException("Registrazione non modificabile: "+restriction);
+        double dayTotal,yearTotal;
+        try(PreparedStatement p=db.prepareStatement("SELECT COALESCE(SUM(hours),0) FROM entries WHERE work_date=?")){
+          p.setString(1,date.toString());try(ResultSet r=p.executeQuery()){dayTotal=r.next()?r.getDouble(1):0;}
+        }
+        try(PreparedStatement p=db.prepareStatement("SELECT COALESCE(SUM(hours),0) FROM entries WHERE substr(work_date,1,4)=?")){
+          p.setString(1,Integer.toString(date.getYear()));try(ResultSet r=p.executeQuery()){yearTotal=r.next()?r.getDouble(1):0;}
+        }
+        double adjusted=QuickHoursSupport.adjusted(current,dayTotal,yearTotal,delta);
+        try(PreparedStatement p=db.prepareStatement("UPDATE entries SET hours=? WHERE id=?")){
+          p.setDouble(1,adjusted);p.setInt(2,entryId);
+          if(p.executeUpdate()!=1)throw new SQLException("Registrazione non più disponibile.");
+        }
+        db.commit();
+      }catch(SQLException|RuntimeException ex){db.rollback();throw ex;}
+      finally{db.setAutoCommit(true);}
+    }
+
     void deleteEntry(int id) throws SQLException{try(PreparedStatement p=db.prepareStatement("DELETE FROM entries WHERE id=?")){p.setInt(1,id);p.executeUpdate();}}
     Set<Integer> projectHistoryIds() throws SQLException{
       Set<Integer> ids=new HashSet<>();
