@@ -1,4 +1,4 @@
-# FAQ — Registro Ore 3.11.0
+# FAQ — Registro Ore 3.11.1
 
 **Dove si trovano le ore?** Nel database SQLite locale. Il percorso effettivo è visualizzato in basso a sinistra e in **Sistema → Stato database**.
 
@@ -32,7 +32,7 @@ No. Per proteggere timesheet e documenti, l'eliminazione definitiva è consentit
 
 ### Perché non posso creare altre Categorie?
 
-A partire dalla 3.11.0 le **nove Categorie** definiscono direttamente il comportamento gestionale e i filtri di rendicontazione. Si possono creare liberamente le singole **Attività** usando una delle nove Categorie, ma non introdurre una decima categoria personalizzata. La sezione **Gestione → Guida alle categorie** ne chiarisce usi e limiti.
+A partire dalla 3.11.1 le **nove Categorie** definiscono direttamente il comportamento gestionale e i filtri di rendicontazione. Si possono creare liberamente le singole **Attività** usando una delle nove Categorie, ma non introdurre una decima categoria personalizzata. La sezione **Gestione → Guida alle categorie** ne chiarisce usi e limiti.
 
 ### Durante una sospensione didattica posso registrare una commissione o un convegno?
 
@@ -44,4 +44,13 @@ No. Si registra una missione con sede, periodo e scopo, poi si collegano a essa 
 
 ### Che cosa succede alle vecchie categorie dopo l'aggiornamento?
 
-Alla prima apertura la 3.11.0 crea una copia di sicurezza e converte la classificazione nelle nove categorie. I nomi originari restano tracciati; i casi ambigui vengono evidenziati per revisione. Le ore, le note, i progetti e i blocchi contabili rimangono invariati.
+Alla prima apertura la 3.11.1 crea una copia di sicurezza e converte la classificazione nelle nove categorie. I nomi originari restano tracciati; i casi ambigui vengono evidenziati per revisione. Le ore, le note, i progetti e i blocchi contabili rimangono invariati.
+
+### Quando aggiungo ore su più giorni a un progetto già presente, che cosa succede?
+Le ore vengono sommate a quelle già registrate per la stessa attività/data se la missione, la categoria storica e la provenienza sono compatibili. Le note vengono conservate. Per missioni diverse, o righe provenienti da altre fonti, il programma crea una riga separata per non perdere informazioni rendicontabili.
+
+### Come vedo le ore già registrate nel calendario «Più giorni»?
+Scegli un'attività: sotto ogni data compare il totale di ore già registrate per quell'attività. Passa il mouse sul giorno per vedere tutte le registrazioni e il totale previsto. Senza attività selezionata viene mostrato il totale giornaliero.
+
+### Posso leggere il Registro mentre scelgo più giorni?
+Sì, il selettore è una finestra non modale. Puoi spostarla e scorrere il Registro sottostante. Se modifichi le ore nel frattempo, premi «Aggiorna calendario» per sincronizzare l'anteprima prima di salvare.

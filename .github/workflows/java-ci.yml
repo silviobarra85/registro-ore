@@ -25,3 +25,8 @@ jobs:
         run: java -cp "target/test-classes:target/classes" it.registroore.ProjectIdentityTest
       - name: Regression test - nove categorie e sospensioni
         run: java -cp "target/test-classes:target/classes" it.registroore.CategoryTaxonomyTest
+
+      - name: Regression test - calendario e unione ore multi-giorno
+        run: java -cp "target/test-classes:target/classes" it.registroore.BatchEntrySupportTest
+      - name: SQLite smoke test - consolidamento e blocchi
+        run: python3 tests/test_batch_sqlite.py

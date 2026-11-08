@@ -1,4 +1,13 @@
-# Changelog
+# Registro Ore — Cronologia versioni
+
+## 3.11.1 — Inserimento su più giorni
+
+- Somma le ore su registrazioni già presenti per la stessa attività e data, quando missione, categoria storica e origine sono compatibili. Consolidamento atomico delle righe compatibili senza perdere le note.
+- Calendario multi-giorno: mostra le ore già registrate per l’attività scelta, il totale giornaliero e un tooltip con il dettaglio completo della giornata.
+- Evidenzia i giorni con ore già presenti e segnala superamenti di 8 ore; impedisce nuovi inserimenti che portino a oltre 24 ore giornaliere.
+- Finestra multi-giorno non modale: il Registro sottostante rimane consultabile e scorrevole.
+- Pacchetti dedicati di aggiornamento per Windows e Linux Mint oltre agli installer completi. Nessuna migrazione del database.
+
 
 ## v3.11.0 — 2026-11-07
 

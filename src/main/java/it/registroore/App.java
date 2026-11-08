@@ -22,7 +22,7 @@ import java.awt.datatransfer.StringSelection;
 
 /** Registro ore accademico multiannuale. Desktop Swing + SQLite su file. */
 public final class App extends JFrame {
-  private static final String VERSION = "3.11.0";
+  private static final String VERSION = "3.11.1";
   private static final int DEFAULT_YEAR = 2026;
   private static final double YEAR_LIMIT = 1500.0;
   private static final String UNSET_ROLE = "Da impostare";
@@ -498,9 +498,13 @@ public final class App extends JFrame {
   private static boolean weekend(LocalDate d){return d.getDayOfWeek().getValue()>=6;}
   private boolean blocked(LocalDate d){return weekend(d)||suspensions.containsKey(d);}
   private boolean validateSuspension(String category,Collection<LocalDate> dates,String note){
+    return validateSuspension(category,dates,note,suspensions);
+  }
+  private boolean validateSuspension(String category,Collection<LocalDate> dates,String note,
+                                     Map<LocalDate,String> suspended){
     var rule=CategoryTaxonomy.rule(category);
     if(rule==null)return true;
-    List<LocalDate> blockedDays=dates.stream().filter(this::blocked).sorted().toList();
+    List<LocalDate> blockedDays=dates.stream().filter(d->weekend(d)||suspended.containsKey(d)).sorted().toList();
     if(blockedDays.isEmpty())return true;
     if(rule.suspension()==CategoryTaxonomy.Suspension.ALLOW)return true;
     if(rule.suspension()==CategoryTaxonomy.Suspension.BLOCK){
@@ -672,95 +676,174 @@ public final class App extends JFrame {
       }catch(Exception e){error(e);}
     }
   }
-  /** Inserimento multiplo: i giorni sono scelti da un calendario annuale compatto. */
+  /**
+   * Inserimento su più giornate. Finestra non modale: il Registro alle spalle rimane
+   * consultabile e scorrevole. Il calendario mostra i dati dell'anno all'apertura,
+   * aggiornabili con il pulsante dedicato dopo modifiche eseguite sul Registro.
+   */
   private void batchEntryEditor(){
+    final int batchYear=selectedYear; // Una finestra aperta mantiene la sua annualità.
     final SortedSet<LocalDate> selected=new TreeSet<>();
-    final JDialog dialog=new JDialog(this,"Registra ore su più giornate — "+selectedYear,true);
+    final Map<LocalDate,String> batchSuspensions=new HashMap<>();
+    try{batchSuspensions.putAll(store.getSuspensions(batchYear));}catch(SQLException ex){error(ex);return;}
+    final Map<LocalDate,JToggleButton> dayButtons=new LinkedHashMap<>();
+    final Map<LocalDate,Color> idleColors=new HashMap<>();
+    final Map<LocalDate,Boolean> closedMonths=new HashMap<>();
+    final Map<LocalDate,List<LogEntry>> previewRows=new HashMap<>();
+    final JDialog dialog=new JDialog(this,"Più giorni — "+batchYear,false);
     dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
-    JPanel main=new JPanel(new BorderLayout(10,10));main.setBackground(BG);main.setBorder(new EmptyBorder(14,16,14,16));
-    JTextField activityName=new JTextField(24);activityName.setPreferredSize(new Dimension(325,31));
+    JPanel main=new JPanel(new BorderLayout(10,10));main.setBackground(BG);
+    main.setBorder(new EmptyBorder(12,13,12,13));
+    JTextField activityName=new JTextField(24);activityName.setPreferredSize(new Dimension(330,31));
     JComboBox<String> category=new JComboBox<>(categoryNames());category.setPreferredSize(new Dimension(285,32));
     JTextField hours=new JTextField("2",9),notes=new JTextField(23);
     JComboBox<MissionChoice> mission=new JComboBox<>(missionChoices());
     JPanel inputs=new JPanel(new GridBagLayout());inputs.setBackground(BG);
-    GridBagConstraints gc=new GridBagConstraints();gc.gridx=0;gc.gridy=0;gc.insets=new Insets(4,8,4,8);gc.anchor=GridBagConstraints.WEST;
+    GridBagConstraints gc=new GridBagConstraints();gc.gridx=0;gc.gridy=0;
+    gc.insets=new Insets(3,7,3,7);gc.anchor=GridBagConstraints.WEST;
     field(inputs,gc,"Attività",installActivitySuggestions(activityName,category));
-    field(inputs,gc,"Categoria (solo per nuova attività)",category);
-    field(inputs,gc,"Ore per ciascun giorno",hours);
-    field(inputs,gc,"Note (replicate sui giorni)",notes);field(inputs,gc,"Missione (facoltativa)",mission);
+    field(inputs,gc,"Categoria (solo nuova attività)",category);
+    field(inputs,gc,"Ore da aggiungere per giorno",hours);
+    field(inputs,gc,"Note",notes);field(inputs,gc,"Missione (facoltativa)",mission);
     main.add(inputs,BorderLayout.NORTH);
-    JPanel months=new JPanel(new GridLayout(0,3,11,11));months.setBackground(BG);
+    JPanel months=new JPanel(new GridLayout(0,2,9,9));months.setBackground(BG);
+    final Map<Integer,JPanel> monthCards=new HashMap<>();
     JLabel counter=label("Selezionati: 0 giorni",13,true);
     for(int month=1;month<=12;month++){
-      YearMonth ym=YearMonth.of(selectedYear,month);
+      YearMonth ym=YearMonth.of(batchYear,month);
       JPanel box=new JPanel(new BorderLayout(0,5));box.setBackground(WHITE);
-      box.setBorder(new CompoundBorder(new LineBorder(LINE,1,true),new EmptyBorder(6,6,8,6)));
+      monthCards.put(month,box);
+      box.setBorder(new CompoundBorder(new LineBorder(LINE,1,true),new EmptyBorder(5,6,6,6)));
       final boolean monthClosed;
-      try{monthClosed=store.isMonthLocked(selectedYear,month);}catch(SQLException ex){error(ex);return;}
+      try{monthClosed=store.isMonthLocked(batchYear,month);}catch(SQLException ex){error(ex);return;}
       JPanel title=new JPanel(new BorderLayout());title.setOpaque(false);
       title.add(label(MONTHS[month-1]+(monthClosed?"  🔒":""),12,true),BorderLayout.WEST);
-      JButton week=subtle("Lun–Ven");week.setFont(new Font("SansSerif",Font.PLAIN,10));week.setMargin(new Insets(1,3,1,3));week.setEnabled(!monthClosed);
+      JButton week=subtle("Lun–Ven");week.setFont(new Font("SansSerif",Font.PLAIN,10));
+      week.setMargin(new Insets(1,3,1,3));week.setEnabled(!monthClosed);
       title.add(week,BorderLayout.EAST);box.add(title,BorderLayout.NORTH);
       JPanel grid=new JPanel(new GridLayout(0,7,2,2));grid.setOpaque(false);
-      for(String day:DAYS){JLabel head=new JLabel(day,SwingConstants.CENTER);head.setFont(new Font("SansSerif",Font.BOLD,10));grid.add(head);}
+      for(String day:DAYS){JLabel head=new JLabel(day,SwingConstants.CENTER);
+        head.setFont(new Font("SansSerif",Font.BOLD,10));grid.add(head);}
       int start=ym.atDay(1).getDayOfWeek().getValue()-1;
       for(int i=0;i<start;i++)grid.add(new JLabel(""));
       List<JToggleButton> monthDays=new ArrayList<>();
       for(int day=1;day<=ym.lengthOfMonth();day++){
-        LocalDate date=ym.atDay(day);boolean closed=monthClosed;
-        JToggleButton cell=new JToggleButton(Integer.toString(day));cell.setFont(new Font("SansSerif",Font.PLAIN,11));
-        cell.setMargin(new Insets(0,0,0,0));cell.setPreferredSize(new Dimension(32,24));
-        cell.setFocusPainted(false);cell.setEnabled(!closed);cell.setOpaque(true);
-        Color idle=blocked(date)?RED:WHITE;
-        cell.setBackground(idle);
-        cell.setToolTipText(closed?"Mese bloccato":blocked(date)?"Pausa didattica / weekend: consentiti solo progetti e altre attività":date.format(DISPLAY));
-        cell.addActionListener(e->{if(cell.isSelected()){selected.add(date);cell.setText("✓"+date.getDayOfMonth());cell.setBackground(new Color(176,221,252));}
-          else{selected.remove(date);cell.setText(Integer.toString(date.getDayOfMonth()));cell.setBackground(idle);}counter.setText("Selezionati: "+selected.size()+" giorni");});
+        LocalDate date=ym.atDay(day);
+        JToggleButton cell=new JToggleButton();cell.setFont(new Font("SansSerif",Font.PLAIN,10));
+        cell.setMargin(new Insets(0,0,0,0));cell.setPreferredSize(new Dimension(44,35));
+        cell.setFocusPainted(false);cell.setOpaque(true);
+        cell.setContentAreaFilled(true);
+        dayButtons.put(date,cell);idleColors.put(date,(weekend(date)||batchSuspensions.containsKey(date))?RED:WHITE);
+        closedMonths.put(date,monthClosed);
+        cell.addActionListener(e->{
+          if(closedMonths.getOrDefault(date,false)){
+            cell.setSelected(false);JOptionPane.showMessageDialog(dialog,"La mensilità è bloccata: non puoi aggiungere ore.");return;
+          }
+          if(cell.isSelected())selected.add(date);else selected.remove(date);
+          counter.setText("Selezionati: "+selected.size()+" giorni");
+          cell.setBackground(cell.isSelected()?new Color(176,221,252):idleColors.get(date));
+          cell.setText(BatchEntrySupport.dayLabel(date,cell.isSelected(),activityName.getText(),previewRows.getOrDefault(date,List.of())));
+        });
         monthDays.add(cell);grid.add(cell);
       }
       week.addActionListener(e->{for(int i=0;i<monthDays.size();i++){
-        LocalDate d=ym.atDay(i+1);JToggleButton b=monthDays.get(i);
-        if(!weekend(d)&&!suspensions.containsKey(d)&&!b.isSelected())b.doClick();
+        LocalDate d=ym.atDay(i+1);JToggleButton button=monthDays.get(i);
+        if(!weekend(d)&&!batchSuspensions.containsKey(d)&&!button.isSelected())button.doClick();
       }});
       box.add(grid,BorderLayout.CENTER);months.add(box);
     }
-    JScrollPane scroll=new JScrollPane(months);scroll.getVerticalScrollBar().setUnitIncrement(22);
-    scroll.setPreferredSize(new Dimension(990,440));scroll.setBorder(null);main.add(scroll,BorderLayout.CENTER);
-    JPanel footer=new JPanel(new BorderLayout(10,10));footer.setOpaque(false);
-    JLabel warning=label("Seleziona le date nel calendario. I giorni bloccati non sono selezionabili.",12,false);
+    JScrollPane scroll=new JScrollPane(months);scroll.getVerticalScrollBar().setUnitIncrement(24);
+    scroll.setPreferredSize(new Dimension(730,335));scroll.setBorder(null);
+    main.add(scroll,BorderLayout.CENTER);
+    JPanel footer=new JPanel(new BorderLayout(8,7));footer.setOpaque(false);
+    JLabel warning=label("Il numero sotto il giorno indica le ore già presenti per l'attività scelta; passa il mouse per il dettaglio.",11,false);
     footer.add(warning,BorderLayout.NORTH);
-    JPanel actions=new JPanel(new FlowLayout(FlowLayout.RIGHT,8,0));actions.setOpaque(false);
-    JButton clear=subtle("Deseleziona"),cancel=subtle("Annulla"),save=action("Salva su tutti i giorni");
-    clear.addActionListener(e->{for(Component comp:months.getComponents())if(comp instanceof JPanel panel){
-        // For each month, retrieve day cells from the central grid.
-        for(Component middle:panel.getComponents())if(middle instanceof JPanel gridPanel){
-          for(Component b:gridPanel.getComponents())if(b instanceof JToggleButton toggle && toggle.isSelected())toggle.doClick();
-        }
-      }});
+    JPanel actions=new JPanel(new FlowLayout(FlowLayout.RIGHT,6,0));actions.setOpaque(false);
+    JButton reloadButton=subtle("Aggiorna calendario");
+    JButton clear=subtle("Deseleziona"),cancel=subtle("Chiudi"),save=action("Aggiungi ore");
+    final Runnable repaintPreview=()->{
+      String requested=activityName.getText().trim();
+      Double incoming=null;
+      try{double parsed=Double.parseDouble(hours.getText().trim().replace(',','.'));
+        if(Double.isFinite(parsed)&&parsed>0)incoming=parsed;
+      }catch(NumberFormatException ignored){}
+      for(var e:dayButtons.entrySet()){
+        LocalDate date=e.getKey();JToggleButton cell=e.getValue();
+        List<LogEntry> daily=previewRows.getOrDefault(date,List.of());
+        double existing=BatchEntrySupport.activityHours(daily,requested);
+        double dailyTotal=BatchEntrySupport.total(daily);
+        Color idle=(weekend(date)||batchSuspensions.containsKey(date))?RED:existing>0?new Color(214,234,255):dailyTotal>0?new Color(238,246,255):WHITE;
+        if(incoming!=null&&dailyTotal+incoming>24.000001)idle=ALERT;
+        else if(incoming!=null&&dailyTotal+incoming>8.000001)idle=new Color(255,236,205);
+        idleColors.put(date,idle);
+        cell.setBackground(cell.isSelected()?new Color(176,221,252):idle);
+        cell.setText(BatchEntrySupport.dayLabel(date,cell.isSelected(),requested,daily));
+        cell.setToolTipText(BatchEntrySupport.tooltip(date,daily,requested,incoming,
+          closedMonths.getOrDefault(date,false),batchSuspensions.getOrDefault(date,"")));
+      }
+    };
+    final Runnable reloadPreview=()->{
+      try{
+        batchSuspensions.clear();batchSuspensions.putAll(store.getSuspensions(batchYear));
+        previewRows.clear();
+        for(LogEntry e:store.getLogs(batchYear))previewRows.computeIfAbsent(e.date(),k->new ArrayList<>()).add(e);
+        repaintPreview.run();
+      }catch(SQLException ex){error(ex);}
+    };
+    reloadButton.addActionListener(e->reloadPreview.run());
+    DocumentListener livePreview=new DocumentListener(){
+      private void update(){SwingUtilities.invokeLater(()->{if(dialog.isDisplayable())repaintPreview.run();});}
+      public void insertUpdate(DocumentEvent e){update();}
+      public void removeUpdate(DocumentEvent e){update();}
+      public void changedUpdate(DocumentEvent e){update();}
+    };
+    activityName.getDocument().addDocumentListener(livePreview);
+    hours.getDocument().addDocumentListener(livePreview);
+    clear.addActionListener(e->{for(JToggleButton button:dayButtons.values())if(button.isSelected())button.doClick();});
     cancel.addActionListener(e->dialog.dispose());
     save.addActionListener(e->{try{
       String name=activityName.getText().trim();if(name.isEmpty())throw new IllegalArgumentException("Indica l'attività.");
       if(name.equalsIgnoreCase("ATTIVITÀ SOSPESE"))throw new IllegalArgumentException("Le sospensioni si gestiscono nella sezione Sospensioni.");
       if(selected.isEmpty())throw new IllegalArgumentException("Seleziona almeno un giorno.");
       double quantity=Double.parseDouble(hours.getText().trim().replace(',','.'));
-      if(!Double.isFinite(quantity)||quantity<=0||quantity>24)throw new IllegalArgumentException("Ore per giorno: inserisci un valore maggiore di 0 e non superiore a 24.");
+      if(!Double.isFinite(quantity)||quantity<=0||quantity>24)
+        throw new IllegalArgumentException("Ore per giorno: inserisci un valore maggiore di 0 e non superiore a 24.");
       Activity known=activities.stream().filter(a->a.name().equalsIgnoreCase(name)).findFirst().orElse(null);
       String group=known==null?(String)category.getSelectedItem():known.category();
-      if(!validateSuspension(group,selected,notes.getText().trim()))return;
-      long duplicates=selected.stream().filter(d->byDate.getOrDefault(d,List.of()).stream().anyMatch(a->a.activity().name().equalsIgnoreCase(name))).count();
-      String confirmation="Registrare "+fmt(quantity)+" ore per "+selected.size()+" giorni ("+fmt(quantity*selected.size())+" ore complessive)?";
-      if(duplicates>0)confirmation+="\nAttenzione: in "+duplicates+" date questa attività è già presente. Le nuove righe si aggiungono senza sostituire le precedenti.";
+      if(!validateSuspension(group,selected,notes.getText().trim(),batchSuspensions))return;
+      // Il registro puo' essere modificato mentre la finestra e' aperta: ricaricare
+      // i dati per la conferma e lasciare al database la validazione atomica.
+      reloadPreview.run();
+      long existingDays=selected.stream().filter(d->BatchEntrySupport.activityHours(previewRows.getOrDefault(d,List.of()),name)>0).count();
+      long over8=selected.stream().filter(d->BatchEntrySupport.total(previewRows.getOrDefault(d,List.of()))+quantity>8.000001).count();
+      String confirmation="Aggiungere "+fmt(quantity)+" h in "+selected.size()+" giorni ("+fmt(quantity*selected.size())+" h in totale)?";
+      if(existingDays>0)confirmation+="\nIn "+existingDays+" giorni l'attività esiste già: le ore saranno sommate alle righe compatibili.";
+      if(over8>0)confirmation+="\nAttenzione: "+over8+" giornate supereranno 8 ore.";
+      confirmation+="\nRegistrazioni con missioni diverse restano separate per conservare la rendicontazione.";
       if(!ask(confirmation))return;
       MissionChoice selectedMission=(MissionChoice)mission.getSelectedItem();
-      store.saveEntriesBatch(selectedYear,new ArrayList<>(selected),name,group,quantity,notes.getText().trim(),
+      store.saveEntriesBatch(batchYear,new ArrayList<>(selected),name,group,quantity,notes.getText().trim(),
         selectedMission==null?null:selectedMission.id());
-      chosen=selected.first();dialog.dispose();changed();
-      JOptionPane.showMessageDialog(this,"Registrazioni salvate correttamente: "+selected.size()+" giornate, "+fmt(quantity*selected.size())+" ore.");
-    }catch(Exception ex){error(ex);}});
-    actions.add(counter);actions.add(clear);actions.add(cancel);actions.add(save);footer.add(actions,BorderLayout.SOUTH);
-    main.add(footer,BorderLayout.SOUTH);dialog.setContentPane(main);
-    dialog.pack();dialog.setSize(Math.min(1120,Toolkit.getDefaultToolkit().getScreenSize().width-70),Math.min(900,Toolkit.getDefaultToolkit().getScreenSize().height-70));
-    dialog.setLocationRelativeTo(this);dialog.setVisible(true);
+      if(selectedYear==batchYear)chosen=selected.first();
+      dialog.dispose();changed();
+      JOptionPane.showMessageDialog(this,"Ore aggiunte: "+selected.size()+" giornate, "+fmt(quantity*selected.size())+" h.\nLe registrazioni compatibili già presenti sono state aggiornate.");
+    }catch(Exception ex){error(ex);reloadPreview.run();}});
+    actions.add(counter);actions.add(reloadButton);actions.add(clear);actions.add(cancel);actions.add(save);
+    footer.add(actions,BorderLayout.SOUTH);main.add(footer,BorderLayout.SOUTH);
+    dialog.setContentPane(main);
+    dialog.setSize(Math.min(800,Toolkit.getDefaultToolkit().getScreenSize().width-40),
+      Math.min(740,Toolkit.getDefaultToolkit().getScreenSize().height-75));
+    // Aprire a lato del Registro: la finestra principale continua a ricevere lo scroll.
+    Rectangle bounds=GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
+    int x=Math.max(bounds.x+8,Math.min(bounds.x+bounds.width-dialog.getWidth()-12,getX()+getWidth()-dialog.getWidth()+55));
+    int y=Math.max(bounds.y+8,Math.min(bounds.y+bounds.height-dialog.getHeight()-12,getY()+35));
+    dialog.setLocation(x,y);
+    reloadPreview.run();
+    dialog.setVisible(true);
+    SwingUtilities.invokeLater(()->{
+      JPanel focusMonth=monthCards.get(chosen.getYear()==batchYear?chosen.getMonthValue():1);
+      if(focusMonth!=null)scroll.getVerticalScrollBar().setValue(Math.max(0,focusMonth.getY()-10));
+    });
   }
 
   /** Autocompletamento interno al dialogo: nessun popup, il campo mantiene sempre il focus. */
@@ -2549,7 +2632,13 @@ public final class App extends JFrame {
       int n=0;try(Statement s=db.createStatement();ResultSet r=s.executeQuery("SELECT COUNT(*) FROM activities")){if(r.next())n=r.getInt(1);}
       float hue=(float)((n*0.61803398875)%1.0);Color c=Color.getHSBColor(hue,0.25f,0.99f);return toHex(c);
     }
-    /** Tutte le date vengono validate prima dell'inserimento e salvate nella medesima transazione. */
+    /**
+     * Inserimento multiplo additivo. Se la stessa attivita' e' presente nello stesso
+     * giorno, riunisce le righe compatibili (stessa missione e categoria storica,
+     * nessuna provenienza esterna), preservando tutte le note.
+     * Missioni diverse o provenienze esterne restano righe distinte per non
+     * falsificare le informazioni rendicontabili. Operazione integralmente atomica.
+     */
     void saveEntriesBatch(int year,List<LocalDate> dates,String name,String category,double hours,String note,Integer missionId) throws SQLException{
       if(dates.isEmpty()||dates.stream().distinct().count()!=dates.size())throw new IllegalArgumentException("Selezione giorni non valida.");
       if(!Double.isFinite(hours)||hours<=0||hours>24)throw new IllegalArgumentException("Ore per giorno non valide.");
@@ -2559,37 +2648,82 @@ public final class App extends JFrame {
       if(existingId>=0&&getArchivedActivityIds().contains(existingId))throw new IllegalArgumentException("Attività archiviata: ripristinala da Archivio attività.");
       if(existingId>=0){
         try(PreparedStatement p=db.prepareStatement("SELECT category FROM activities WHERE id=?")){
-          p.setInt(1,existingId);try(ResultSet r=p.executeQuery()){
-            if(r.next())category=r.getString(1);
-          }
+          p.setInt(1,existingId);try(ResultSet r=p.executeQuery()){if(r.next())category=r.getString(1);}
         }
       }
       for(LocalDate d:dates){
         if(d.getYear()!=year)throw new IllegalArgumentException("Data fuori annualità: "+d);
         if(isMonthLocked(d.getYear(),d.getMonthValue()))throw new IllegalArgumentException("Mese bloccato: "+d.format(DISPLAY));
         validateMissionDate(missionId,d);
-        // Convalida della sospensione gestita dalla UI con conferma e motivazione in nota;
-        // il database applica separatamente i blocchi mensili e di progetto.
+        try(PreparedStatement daily=db.prepareStatement("SELECT COALESCE(SUM(hours),0) FROM entries WHERE work_date=?")){
+          daily.setString(1,d.toString());try(ResultSet r=daily.executeQuery()){
+            if(r.next()&&r.getDouble(1)+hours>24.000001)
+              throw new IllegalArgumentException("Il "+d.format(DISPLAY)+" supererebbe 24 ore (già presenti "+fmt(r.getDouble(1))+" h).");
+          }
+        }
       }
-      double total=0;try(PreparedStatement p=db.prepareStatement("SELECT COALESCE(SUM(hours),0) FROM entries WHERE substr(work_date,1,4)=?")){
+      double total=0;
+      try(PreparedStatement p=db.prepareStatement("SELECT COALESCE(SUM(hours),0) FROM entries WHERE substr(work_date,1,4)=?")){
         p.setString(1,Integer.toString(year));try(ResultSet r=p.executeQuery()){if(r.next())total=r.getDouble(1);}
       }
-      if(total+hours*dates.size()>1500.000001)throw new IllegalArgumentException("Superato limite di 1.500 ore annue: già "+fmt(total)+" h, nuove "+fmt(hours*dates.size())+" h.");
+      if(total+hours*dates.size()>1500.000001)
+        throw new IllegalArgumentException("Superato limite di 1.500 ore annue: già "+fmt(total)+" h, nuove "+fmt(hours*dates.size())+" h.");
       db.setAutoCommit(false);
       try{
         int id=existingId;
-        if(id<0){try(PreparedStatement p=db.prepareStatement("INSERT INTO activities(name,category,color) VALUES(?,?,?)")){
-          p.setString(1,name.trim());p.setString(2,category);p.setString(3,nextColor());p.executeUpdate();}
+        if(id<0){
+          try(PreparedStatement p=db.prepareStatement("INSERT INTO activities(name,category,color) VALUES(?,?,?)")){
+            p.setString(1,name.trim());p.setString(2,category);p.setString(3,nextColor());p.executeUpdate();
+          }
           id=findActivity(name);
-
+          if(id<0)throw new SQLException("Attività non creata.");
         }
-        try(PreparedStatement p=db.prepareStatement("INSERT INTO entries(work_date,activity_id,hours,note,category_snapshot,mission_id) VALUES(?,?,?,?,(SELECT category FROM activities WHERE id=?),?)")){
-          for(LocalDate d:dates){p.setString(1,d.toString());p.setInt(2,id);p.setDouble(3,hours);p.setString(4,note);p.setInt(5,id);
-            if(missionId==null)p.setNull(6,Types.INTEGER);else p.setInt(6,missionId);p.addBatch();}
-          p.executeBatch();
+        try(PreparedStatement find=db.prepareStatement(
+             "SELECT id,hours,note FROM entries WHERE work_date=? AND activity_id=? " +
+             "AND (mission_id=? OR (mission_id IS NULL AND ? IS NULL)) " +
+             "AND category_snapshot=? COLLATE NOCASE " +
+             "AND (source_ref IS NULL OR TRIM(source_ref)='') ORDER BY id" );
+            PreparedStatement update=db.prepareStatement("UPDATE entries SET hours=?,note=? WHERE id=?");
+            PreparedStatement remove=db.prepareStatement("DELETE FROM entries WHERE id=?");
+            PreparedStatement insert=db.prepareStatement(
+              "INSERT INTO entries(work_date,activity_id,hours,note,category_snapshot,mission_id) " +
+              "VALUES(?,?,?,?,(SELECT category FROM activities WHERE id=?),?)")){
+          for(LocalDate d:dates){
+            find.setString(1,d.toString());find.setInt(2,id);
+            if(missionId==null){find.setNull(3,Types.INTEGER);find.setNull(4,Types.INTEGER);}
+            else{find.setInt(3,missionId);find.setInt(4,missionId);}
+            find.setString(5,category);
+            List<Integer> matches=new ArrayList<>();List<String> previousNotes=new ArrayList<>();
+            double existingHours=0;
+            try(ResultSet r=find.executeQuery()){
+              while(r.next()){
+                // Le righe con ore nulle potrebbero essere segnaposto e non si fondono.
+                if(r.getObject(2)==null)continue;
+                matches.add(r.getInt(1));existingHours+=r.getDouble(2);
+                previousNotes.add(r.getString(3));
+              }
+            }
+            if(!matches.isEmpty()){
+              // Eliminare prima i doppioni evita di violare temporaneamente il limite
+              // delle 1.500 ore nei trigger durante il consolidamento.
+              for(int i=1;i<matches.size();i++){
+                remove.setInt(1,matches.get(i));remove.executeUpdate();
+              }
+              update.setDouble(1,existingHours+hours);
+              update.setString(2,BatchEntrySupport.mergeNotes(previousNotes,note));
+              update.setInt(3,matches.get(0));
+              if(update.executeUpdate()!=1)throw new SQLException("Errore aggiornamento delle ore esistenti.");
+            }else{
+              insert.setString(1,d.toString());insert.setInt(2,id);insert.setDouble(3,hours);
+              insert.setString(4,note);insert.setInt(5,id);
+              if(missionId==null)insert.setNull(6,Types.INTEGER);else insert.setInt(6,missionId);
+              insert.executeUpdate();
+            }
+          }
         }
         db.commit();
-      }catch(SQLException|RuntimeException ex){db.rollback();throw ex;}finally{db.setAutoCommit(true);}
+      }catch(SQLException|RuntimeException ex){db.rollback();throw ex;}
+      finally{db.setAutoCommit(true);}
     }
     void saveEntry(Integer id,LocalDate date,String name,String category,Double hours,String note,Integer missionId) throws SQLException{
       validateMissionDate(missionId,date);

@@ -1,10 +1,10 @@
-# Registro Ore · v3.11.0
+# Registro Ore · v3.11.1
 
 <p align="center"><img src="assets/registro-ore-icon.png" alt="Icona Registro Ore" width="128"></p>
 
 **Applicazione desktop per registrare, pianificare e rendicontare le ore di didattica, attività istituzionali e progetti di ricerca.**
 
-Disponibile per **macOS, Windows 10/11 (64 bit)** e **Linux Mint (64 bit)**. È realizzata in Java Swing e usa un **database SQLite locale**, senza server. Questa distribuzione è la versione **3.11.0**.
+Disponibile per **macOS, Windows 10/11 (64 bit)** e **Linux Mint (64 bit)**. È realizzata in Java Swing e usa un **database SQLite locale**, senza server. Questa distribuzione è la versione **3.11.1**.
 
 **Dati personali:** i pacchetti distribuiti includono un database iniziale privo di registrazioni, progetti, colleghi e allegati. Le registrazioni di ciascun utente rimangono nel database locale e non vengono trasmesse al repository.
 
@@ -12,19 +12,19 @@ Disponibile per **macOS, Windows 10/11 (64 bit)** e **Linux Mint (64 bit)**. È 
 
 | Sistema | Prima installazione | Aggiornamento / alternativa |
 |---|---|---|
-| **macOS** | [Installazione vergine (.zip)](installers/macos/RegistroOre_3_11_0_MAC_VERGINE.zip) | [Aggiornamento con doppio clic (.zip)](installers/macos/RegistroOre_3_11_0_MAC_AGGIORNAMENTO.zip) |
-| **Windows 10/11 x64** | [Applicazione (.zip)](installers/windows/RegistroOre_3_11_0_Windows_x64.zip) | Sostituire l'eseguibile solo dopo un backup |
-| **Linux Mint x64** | [Pacchetto (.deb)](installers/linux/RegistroOre_3_11_0_LinuxMint_amd64.deb) | [Versione portabile (.zip)](installers/linux/RegistroOre_3_11_0_LinuxMint_Portabile.zip) |
+| **macOS** | [Installazione vergine (.zip)](installers/macos/RegistroOre_3_11_1_MAC_VERGINE.zip) | [Aggiornamento con doppio clic (.zip)](installers/macos/RegistroOre_3_11_1_MAC_AGGIORNAMENTO.zip) |
+| **Windows 10/11 x64** | [Applicazione (.zip)](installers/windows/RegistroOre_3_11_1_Windows_x64.zip) | Sostituire l'eseguibile solo dopo un backup |
+| **Linux Mint x64** | [Pacchetto (.deb)](installers/linux/RegistroOre_3_11_1_LinuxMint_amd64.deb) | [Versione portabile (.zip)](installers/linux/RegistroOre_3_11_1_LinuxMint_Portabile.zip) |
 
 Le versioni distribuite sono disponibili anche nella **[sezione Releases](../../releases)**.
 
 **Requisiti:** JRE/JDK **Java 17+** per Mac e Linux. Su Windows il launcher usa una Java Runtime compatibile, se presente, o può predisporla alla prima esecuzione (serve Internet). Gli eseguibili non sono firmati digitalmente: macOS e Windows possono richiedere un'autorizzazione di sicurezza.
 
-**Novità 3.11.0:** nove **Categorie** predefinite al posto delle vecchie categorie personalizzabili e delle regole operative separate; rendicontazione per categoria; guida alle categorie nell’app; archivio delle missioni e collegamento facoltativo alle registrazioni (senza duplicare le ore). Le attività e i progetti esistenti rimangono disponibili.
+**Novità 3.11.1:** inserimento su più giorni con somma delle ore già presenti, calendario informativo con tooltip giornaliero e finestra indipendente dal Registro. La versione 3.11.0 ha introdotto nove **Categorie** predefinite al posto delle vecchie categorie personalizzabili e delle regole operative separate; rendicontazione per categoria; guida alle categorie nell’app; archivio delle missioni e collegamento facoltativo alle registrazioni (senza duplicare le ore). Le attività e i progetti esistenti rimangono disponibili.
 
 ## Funzioni principali
 
-- Calendario e registro **multiannuale**, con più attività nello stesso giorno e inserimenti ripetuti su più giornate.
+- Calendario e registro **multiannuale**, con più attività nello stesso giorno e inserimenti ripetuti su più giornate, con **somma automatica delle ore compatibili**, anteprima delle ore già presenti e dettaglio al passaggio del mouse.
 - Monte ore di **1.500 ore per anno**, avvisi per giornate oltre **8 ore** e sospensioni didattiche personalizzabili.
 - **Nove Categorie predefinite**, una per attività, con controlli integrati su sospensioni didattiche e rendicontazione per categoria. Le singole attività restano modificabili e archiviabili.
 - **Guida alle categorie** accessibile dall’app, con esempi, esclusioni e comportamento durante le sospensioni.
@@ -79,7 +79,7 @@ L'applicazione Java compilata usa le dipendenze dichiarate in `pom.xml`. L'avvio
 
 ## Licenza, autore e attribuzione
 
-**© 2026 Silvio Barra (DIETI-UNINA) & ChatGPT · Registro Ore v3.11.0**
+**© 2026 Silvio Barra (DIETI-UNINA) & ChatGPT · Registro Ore v3.11.1**
 
 Autore: **Silvio Barra (DIETI-UNINA)**. Progetto sviluppato con il supporto di ChatGPT. La dicitura non implica un patrocinio ufficiale da parte delle organizzazioni citate.
 
