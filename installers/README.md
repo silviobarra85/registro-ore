@@ -1,11 +1,11 @@
-# Installer — Registro Ore 3.11.2
+# Installer — Registro Ore 3.11.3
 
 | Piattaforma | Prima installazione | Aggiornamento |
 |---|---|---|
-| macOS | `macos/RegistroOre_3_11_2_MAC_VERGINE.zip` | `macos/RegistroOre_3_11_2_MAC_AGGIORNAMENTO.zip` |
-| Windows 10/11 64 bit | `windows/RegistroOre_3_11_2_Windows_x64.zip` | `windows/RegistroOre_3_11_2_Windows_AGGIORNAMENTO.zip` |
-| Linux Mint x64 | `linux/RegistroOre_3_11_2_LinuxMint_amd64.deb` | `linux/RegistroOre_3_11_2_LinuxMint_AGGIORNAMENTO.zip` |
-| Linux portabile | `linux/RegistroOre_3_11_2_LinuxMint_Portabile.zip` | Scaricare e sostituire il programma portabile mantenendo la cartella dati |
+| macOS | `macos/RegistroOre_3_11_3_MAC_VERGINE.zip` | `macos/RegistroOre_3_11_3_MAC_AGGIORNAMENTO.zip` |
+| Windows 10/11 64 bit | `windows/RegistroOre_3_11_3_Windows_x64.zip` | `windows/RegistroOre_3_11_3_Windows_AGGIORNAMENTO.zip` |
+| Linux Mint x64 | `linux/RegistroOre_3_11_3_LinuxMint_amd64.deb` | `linux/RegistroOre_3_11_3_LinuxMint_AGGIORNAMENTO.zip` |
+| Linux portabile | `linux/RegistroOre_3_11_3_LinuxMint_Portabile.zip` | Scaricare e sostituire il programma portabile mantenendo la cartella dati |
 
 Gli aggiornamenti non includono database personali. Eseguire un backup e chiudere il programma prima dell'installazione.
 

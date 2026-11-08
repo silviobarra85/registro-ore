@@ -1,8 +1,8 @@
-# Manuale utente — Registro Ore 3.11.2
+# Manuale utente — Registro Ore 3.11.3
 
 **Destinatari:** docenti, ricercatori e collaboratori che devono registrare attività e rendicontare ore su progetti, didattica e altre attività.
 
-> Il manuale descrive la versione Java 3.11.2. Le etichette potrebbero variare leggermente secondo il sistema operativo. Conservare sempre una copia di sicurezza prima di importazioni e aggiornamenti.
+> Il manuale descrive la versione Java 3.11.3. Le etichette potrebbero variare leggermente secondo il sistema operativo. Conservare sempre una copia di sicurezza prima di importazioni e aggiornamenti.
 
 ## Indice
 
@@ -90,13 +90,13 @@ La finestra **Più giorni** è indipendente e **non blocca il Registro alle spal
 
 **Le ore vengono sommate** se, nello stesso giorno, esiste già un'attività corrispondente con la stessa missione e categoria storica. Le note delle righe compatibili sono conservate; le precedenti righe duplicate compatibili vengono consolidate in una sola. Se le registrazioni sono associate a **missioni diverse** (o hanno diversa provenienza/categoria storica), non vengono fuse, per evitare di perdere informazioni: restano righe separate. L'aggiunta è atomica, controlla i mesi/progetti bloccati, il tetto annuo e impedisce totali superiori a 24 ore giornaliere; il superamento delle 8 ore viene segnalato e richiede conferma.
 
-### Variazioni rapide delle ore (3.11.2)
+### Variazioni rapide delle ore (3.11.3)
 
 Nel **Registro mensile** ogni registrazione con ore modificabili dispone dei pulsanti **`−`** e **`+`** accanto al monte ore. Ogni clic sottrae o aggiunge **30 minuti**, senza aprire una finestra e senza cambiare i dettagli della registrazione (attività, data, categoria storica, missione, note o provenienza). Il giorno resta nella stessa posizione dopo l'aggiornamento.
 
 Il pulsante `−` non cancella una riga: quando resterebbero 0 ore non è disponibile; usare **Modifica** o **Elimina** per le correzioni definitive. I comandi rapidi vengono disabilitati sui periodi o sui progetti bloccati. Se la sospensione delle lezioni richiede una verifica o deroga, il pulsante `+` non è disponibile: usare **Modifica** per confermare o motivare l'attività svolta. Restano attivi i limiti di 24 ore giornaliere e 1.500 ore annue; oltre 8 ore appare un avviso visuale.
 
-### Calendario «Più giorni» più leggibile (3.11.2)
+### Calendario «Più giorni» più leggibile (3.11.3)
 
 La finestra si apre più larga (nei limiti dell'area disponibile) e può essere ridimensionata. Con una finestra ampia mostra due mesi per riga; restringendola passa automaticamente a un mese per riga. I pulsanti dei giorni sono più alti e la dicitura delle ore non va a capo: in tal modo **numero del giorno e ore già registrate** sono leggibili senza sovrapposizioni. I tooltip con i dettagli rimangono disponibili.
 
@@ -204,7 +204,7 @@ Non pubblicare mai su GitHub database personali, allegati, file di log, timeshee
 
 ## 14. Risoluzione dei problemi
 
-- **L'app non si avvia e appare `UnsupportedClassVersionError`:** verificare Java **17+**; la versione 3.11.2 è compilata per Java 17.
+- **L'app non si avvia e appare `UnsupportedClassVersionError`:** verificare Java **17+**; la versione 3.11.3 è compilata per Java 17.
 - **Non compaiono ore o un progetto:** controllare il **percorso del database effettivamente usato**, non ripristinare subito una copia.
 - **Un giorno o un mese non accetta ore:** controllare stato di sospensione, blocchi mensili, chiusura progetto e limite di 1.500 ore.
 - **Non riesci ad aprire un allegato:** provarne lo scaricamento e l'apertura esterna; l'anteprima Office è in parte testuale.
@@ -219,3 +219,7 @@ Le missioni sono **contesti di lavoro trasversali alle categorie**, non una deci
 Una missione può comprendere più attività con categorie diverse. Per registrare le ore aprire **Registro**, selezionare l'attività e, se opportuno, associare una missione per la data. Se la registrazione è fuori dal periodo della missione, il salvataggio è impedito. **La missione non crea ore da sola**: evita quindi qualsiasi duplicazione. Per le ore di viaggio e l'imputazione al progetto consultare le regole del bando e le autorizzazioni dell'Ateneo.
 
 Non cancellare una missione già collegata a registrazioni: scollegare prima le ore nei periodi non bloccati e rispettare la conservazione dello storico.
+
+### Pulsanti rapidi nel Registro (v3.11.3)
+
+I controlli accanto alle ore sono disposti **meno | ore | più**. Premendo il meno sottrai 30 minuti, premendo il più aggiungi 30 minuti. Le icone non dipendono dal font di macOS; se la registrazione è bloccata il relativo controllo risulta disabilitato. Per modificare attività, note o missioni usa «Modifica».

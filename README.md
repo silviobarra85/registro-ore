@@ -1,10 +1,10 @@
-# Registro Ore · v3.11.2
+# Registro Ore · v3.11.3
 
 <p align="center"><img src="assets/registro-ore-icon.png" alt="Icona Registro Ore" width="128"></p>
 
 **Applicazione desktop per registrare, pianificare e rendicontare le ore di didattica, attività istituzionali e progetti di ricerca.**
 
-Disponibile per **macOS, Windows 10/11 (64 bit)** e **Linux Mint (64 bit)**. È realizzata in Java Swing e usa un **database SQLite locale**, senza server. Questa distribuzione è la versione **3.11.2**.
+Disponibile per **macOS, Windows 10/11 (64 bit)** e **Linux Mint (64 bit)**. È realizzata in Java Swing e usa un **database SQLite locale**, senza server. Questa distribuzione è la versione **3.11.3**.
 
 **Dati personali:** i pacchetti distribuiti includono un database iniziale privo di registrazioni, progetti, colleghi e allegati. Le registrazioni di ciascun utente rimangono nel database locale e non vengono trasmesse al repository.
 
@@ -12,15 +12,15 @@ Disponibile per **macOS, Windows 10/11 (64 bit)** e **Linux Mint (64 bit)**. È 
 
 | Sistema | Prima installazione | Aggiornamento / alternativa |
 |---|---|---|
-| **macOS** | [Installazione vergine (.zip)](installers/macos/RegistroOre_3_11_2_MAC_VERGINE.zip) | [Aggiornamento con doppio clic (.zip)](installers/macos/RegistroOre_3_11_2_MAC_AGGIORNAMENTO.zip) |
-| **Windows 10/11 x64** | [Applicazione (.zip)](installers/windows/RegistroOre_3_11_2_Windows_x64.zip) | [Aggiornamento con backup](installers/windows/RegistroOre_3_11_2_Windows_AGGIORNAMENTO.zip) |
-| **Linux Mint x64** | [Pacchetto (.deb)](installers/linux/RegistroOre_3_11_2_LinuxMint_amd64.deb) | [Aggiornamento con backup](installers/linux/RegistroOre_3_11_2_LinuxMint_AGGIORNAMENTO.zip) · [Portatile](installers/linux/RegistroOre_3_11_2_LinuxMint_Portabile.zip) |
+| **macOS** | [Installazione vergine (.zip)](installers/macos/RegistroOre_3_11_3_MAC_VERGINE.zip) | [Aggiornamento con doppio clic (.zip)](installers/macos/RegistroOre_3_11_3_MAC_AGGIORNAMENTO.zip) |
+| **Windows 10/11 x64** | [Applicazione (.zip)](installers/windows/RegistroOre_3_11_3_Windows_x64.zip) | [Aggiornamento con backup](installers/windows/RegistroOre_3_11_3_Windows_AGGIORNAMENTO.zip) |
+| **Linux Mint x64** | [Pacchetto (.deb)](installers/linux/RegistroOre_3_11_3_LinuxMint_amd64.deb) | [Aggiornamento con backup](installers/linux/RegistroOre_3_11_3_LinuxMint_AGGIORNAMENTO.zip) · [Portatile](installers/linux/RegistroOre_3_11_3_LinuxMint_Portabile.zip) |
 
 Le versioni distribuite sono disponibili anche nella **[sezione Releases](../../releases)**.
 
 **Requisiti:** JRE/JDK **Java 17+** per Mac e Linux. Su Windows il launcher usa una Java Runtime compatibile, se presente, o può predisporla alla prima esecuzione (serve Internet). Gli eseguibili non sono firmati digitalmente: macOS e Windows possono richiedere un'autorizzazione di sicurezza.
 
-**Novità 3.11.2:** la finestra «Più giorni» è più ampia e adattabile alla larghezza dello schermo: le ore nelle celle restano su una sola riga, senza spezzarsi. Nel Registro compaiono pulsanti `−` e `+` accanto a ogni voce per sottrarre o aggiungere rapidamente **30 minuti**, senza aprire la finestra Modifica e senza alterare note, missioni o categoria storica. I blocchi del timesheet e i limiti continuano a essere applicati. La versione 3.11.1 aveva introdotto l'inserimento cumulativo su più giorni e il calendario con tooltip.
+**Novità 3.11.3:** nel Registro i controlli rapidi delle ore sono ora disposti **`−  [ore]  +`**. Le icone vettoriali restano leggibili su macOS, Windows e Linux e non vengono abbreviate in tre puntini. Ogni clic modifica di 30 minuti nel rispetto dei vincoli esistenti. La 3.11.2 ha migliorato la finestra «Più giorni».
 
 ## Funzioni principali
 
@@ -79,7 +79,7 @@ L'applicazione Java compilata usa le dipendenze dichiarate in `pom.xml`. L'avvio
 
 ## Licenza, autore e attribuzione
 
-**© 2026 Silvio Barra (DIETI-UNINA) & ChatGPT · Registro Ore v3.11.2**
+**© 2026 Silvio Barra (DIETI-UNINA) & ChatGPT · Registro Ore v3.11.3**
 
 Autore: **Silvio Barra (DIETI-UNINA)**. Progetto sviluppato con il supporto di ChatGPT. La dicitura non implica un patrocinio ufficiale da parte delle organizzazioni citate.
 

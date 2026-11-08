@@ -1,4 +1,4 @@
-# Installazione e aggiornamento — Registro Ore 3.11.2
+# Installazione e aggiornamento — Registro Ore 3.11.3
 
 ## Scelta del pacchetto
 
@@ -54,6 +54,6 @@ Aprire **Gestione → Guida alle categorie** per controllare le nuove definizion
 
 Non sono previste modifiche allo schema SQLite. Prima di installare, chiudere l'app e fare una copia del database. L'inserimento su più giorni **aggiunge** le nuove ore alle righe compatibili già presenti nella stessa data. Le righe con missioni diverse o classificazioni storiche incompatibili non vengono fuse. Non modifica automaticamente le registrazioni pregresse: il consolidamento avviene solo quando viene eseguito un nuovo inserimento multiplo.
 
-## Aggiornamento 3.11.2
+## Aggiornamento 3.11.3
 
 Non cambia lo schema del database. La nuova finestra «Più giorni» è più ampia e il Registro ha comandi `−`/`+` per variazioni rapide di 30 minuti. Prima di aggiornare chiudere l'applicazione, creare una copia di sicurezza SQLite verificata e installare i nuovi binari. Per Windows usare il pacchetto `Windows_AGGIORNAMENTO`, per Linux `LinuxMint_AGGIORNAMENTO`, per macOS `MAC_AGGIORNAMENTO`.

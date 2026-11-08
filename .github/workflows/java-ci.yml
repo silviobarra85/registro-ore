@@ -32,3 +32,6 @@ jobs:
         run: python3 tests/test_batch_sqlite.py
       - name: Regression test - modifica rapida ore +/-
         run: java -cp "target/test-classes:target/classes" it.registroore.QuickHoursSupportTest
+
+      - name: Regression test - pulsanti rapidi senza ellissi
+        run: java -Djava.awt.headless=true -cp "target/test-classes:target/classes" it.registroore.QuickHourButtonTest

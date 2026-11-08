@@ -1,4 +1,4 @@
-# FAQ — Registro Ore 3.11.2
+# FAQ — Registro Ore 3.11.3
 
 **Dove si trovano le ore?** Nel database SQLite locale. Il percorso effettivo è visualizzato in basso a sinistra e in **Sistema → Stato database**.
 

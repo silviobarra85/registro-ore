@@ -1,5 +1,12 @@
 # Registro Ore — Cronologia versioni
 
+## 3.11.3 — Correzione pulsanti rapidi nel Registro
+
+- Corretto il rendering dei controlli delle ore su macOS: non appaiono più come `...`.
+- Nuovo ordine **meno — ore — più**, con simboli Java2D vettoriali e controlli di 42 × 32 pixel.
+- Conservati gli incrementi/decrementi di 30 minuti e i vincoli già applicati; nessuna modifica ai dati o allo schema SQLite.
+
+
 ## 3.11.2 — Calendario più leggibile e variazioni rapide
 
 - Finestra «Più giorni» più larga, ridimensionabile e adattiva: due mesi affiancati su schermi ampi, una colonna negli spazi ridotti. Celle più alte e ore non separabili su una riga.

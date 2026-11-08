@@ -22,7 +22,7 @@ import java.awt.datatransfer.StringSelection;
 
 /** Registro ore accademico multiannuale. Desktop Swing + SQLite su file. */
 public final class App extends JFrame {
-  private static final String VERSION = "3.11.2";
+  private static final String VERSION = "3.11.3";
   private static final int DEFAULT_YEAR = 2026;
   private static final double YEAR_LIMIT = 1500.0;
   private static final String UNSET_ROLE = "Da impostare";
@@ -492,6 +492,35 @@ public final class App extends JFrame {
   private static JLabel label(String text,int size,boolean bold){JLabel l=new JLabel(text);l.setFont(new Font("SansSerif",bold?Font.BOLD:Font.PLAIN,size));l.setForeground(INK);return l;}
   private static JButton action(String text){JButton b=new JButton(text);b.setBackground(ORANGE);b.setForeground(NAVY);b.setOpaque(true);b.setFocusPainted(false);b.setBorder(new CompoundBorder(new LineBorder(new Color(226,137,42),1,true),new EmptyBorder(9,14,9,14)));b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));return b;}
   private static JButton subtle(String text){JButton b=new JButton(text);b.setBackground(WHITE);b.setForeground(INK);b.setOpaque(true);b.setBorder(new CompoundBorder(new LineBorder(LINE,1,true),new EmptyBorder(9,13,9,13)));return b;}
+  /**
+   * Pulsante di variazione rapida accessibile e indipendente dal font/Look&Feel.
+   * Un'icona Java2D evita l'ellissi "..." di Aqua macOS, causata dal clipping
+   * del testo di JButton nei pulsanti con bordi molto larghi.
+   */
+  static JButton quickHourButton(boolean increase) {
+    JButton button=subtle("");
+    button.setIcon(new Icon() {
+      @Override public int getIconWidth(){return 18;}
+      @Override public int getIconHeight(){return 18;}
+      @Override public void paintIcon(Component component,Graphics graphics,int x,int y){
+        Graphics2D g=(Graphics2D)graphics.create();
+        try {
+          g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON);
+          g.setColor(component.isEnabled()?INK:new Color(155,165,176));
+          g.setStroke(new BasicStroke(2.5f,BasicStroke.CAP_ROUND,BasicStroke.JOIN_ROUND));
+          g.drawLine(x+3,y+9,x+15,y+9);
+          if(increase) g.drawLine(x+9,y+3,x+9,y+15);
+        } finally {g.dispose();}
+      }
+    });
+    button.setBorder(new CompoundBorder(new LineBorder(LINE,1,true),new EmptyBorder(2,5,2,5)));
+    button.setMargin(new Insets(0,0,0,0));
+    button.setPreferredSize(new Dimension(42,32));
+    button.setMinimumSize(new Dimension(42,32));
+    button.getAccessibleContext().setAccessibleName(increase?"Aggiungi 30 minuti":"Sottrai 30 minuti");
+    return button;
+  }
+
   private static Color color(String hex) {try{return Color.decode(hex);}catch(Exception ex){return new Color(220,235,250);}}
   private static String fmt(Double value){if(value==null)return "—";if(value==Math.rint(value))return Long.toString(value.longValue());return String.format(Locale.ITALY,"%.2f",value).replaceAll("0+$","").replaceAll(",$","");}
   private static String fmt(double value){return fmt(Double.valueOf(value));}
@@ -616,15 +645,11 @@ public final class App extends JFrame {
         if(!lockReason.isBlank()){row.setBackground(new Color(255,238,236));description.setForeground(new Color(157,35,48));}
         row.add(description,BorderLayout.CENTER);
         JPanel tools=new JPanel(new FlowLayout(FlowLayout.RIGHT,7,0));tools.setOpaque(false);
-        JLabel amount=label(fmt(entry.hours())+" h",14,true);amount.setOpaque(true);amount.setBackground(color(entry.activity().color()));amount.setBorder(new EmptyBorder(5,10,5,10));amount.setPreferredSize(new Dimension(64,29));tools.add(amount);
-        // Variazione rapida, senza aprire la finestra Modifica: 30 minuti per clic.
-        // Le protezioni dei timesheet e dei progetti vengono ricontrollate dal database.
-        JButton less=subtle("−"),more=subtle("+");
-        for(JButton button:List.of(less,more)){
-          button.setFont(new Font("SansSerif",Font.BOLD,15));
-          button.setMargin(new Insets(1,4,1,4));
-          button.setPreferredSize(new Dimension(32,29));
-        }
+        JLabel amount=label(fmt(entry.hours())+" h",14,true);amount.setOpaque(true);amount.setBackground(color(entry.activity().color()));amount.setBorder(new EmptyBorder(5,10,5,10));amount.setPreferredSize(new Dimension(64,32));
+        // Controlli rapidi a simboli VETTORIALI: su macOS, un pulsante testuale
+        // troppo stretto rendeva entrambi i simboli come tre puntini (...).
+        // Ordine richiesto: [meno] [ore] [piu]. Ogni clic vale 30 minuti.
+        JButton less=quickHourButton(false),more=quickHourButton(true);
         boolean editable=!locked && lockReason.isBlank() && entry.hours()!=null;
         boolean suspendedReview=blocked(date) && CategoryTaxonomy.rule(entry.activity().category())!=null
           && CategoryTaxonomy.rule(entry.activity().category()).suspension()!=CategoryTaxonomy.Suspension.ALLOW;
@@ -635,7 +660,7 @@ public final class App extends JFrame {
           editable?"Aggiungi 30 minuti (controlli del database attivi)":"Modifica non consentita: "+lockReason);
         less.addActionListener(e->quickHoursChange(entry,-QuickHoursSupport.STEP));
         more.addActionListener(e->quickHoursChange(entry,QuickHoursSupport.STEP));
-        tools.add(less);tools.add(more);
+        tools.add(less);tools.add(amount);tools.add(more);
         JButton edit=subtle("Modifica"),delete=subtle("×");edit.setEnabled(!locked && lockReason.isBlank());delete.setEnabled(!locked && lockReason.isBlank());
         edit.setToolTipText(lockReason.isBlank()?"Modifica la registrazione":"Modifica disabilitata: "+lockReason);
         delete.setToolTipText(lockReason.isBlank()?"Elimina la registrazione":"Eliminazione disabilitata: "+lockReason);
