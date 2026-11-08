@@ -1,5 +1,14 @@
 # Registro Ore — Cronologia versioni
 
+## 3.11.3 Mint FIX1 — 2026-11-08
+
+- Solo Linux Mint: corretta la verifica di slf4j-nop 2.0.17, cercando NOPServiceProvider.class anziché l’inesistente org/slf4j/nop/NOPLogger.class.
+- Nuovo comando `registro-ore --prepara` per scaricare e verificare le dipendenze senza aprire la GUI.
+- Pacchetto Debian 3.11.3-2, aggiornamento con backup SQLite verificato e versione portabile.
+- Sorgenti launcher Linux e ricetta di build sotto packaging/linux; sette test Python del bootstrap, della cache, della conservazione dei dati e dell’aggiornamento.
+- JAR e schema dati della 3.11.3 invariati rispetto alla precedente distribuzione.
+
+
 ## 3.11.3 — Correzione pulsanti rapidi nel Registro
 
 - Corretto il rendering dei controlli delle ore su macOS: non appaiono più come `...`.

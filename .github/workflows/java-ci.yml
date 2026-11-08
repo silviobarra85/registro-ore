@@ -30,6 +30,8 @@ jobs:
         run: java -cp "target/test-classes:target/classes" it.registroore.BatchEntrySupportTest
       - name: SQLite smoke test - consolidamento e blocchi
         run: python3 tests/test_batch_sqlite.py
+      - name: Regression test - primo avvio Linux Mint
+        run: python3 -m unittest discover -s tests -p test_mint_bootstrap.py -v
       - name: Regression test - modifica rapida ore +/-
         run: java -cp "target/test-classes:target/classes" it.registroore.QuickHoursSupportTest
 

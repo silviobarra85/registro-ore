@@ -1,4 +1,4 @@
-# Registro Ore · v3.11.3
+# Registro Ore · v3.11.3 · Mint FIX1
 
 <p align="center"><img src="assets/registro-ore-icon.png" alt="Icona Registro Ore" width="128"></p>
 
@@ -8,13 +8,15 @@ Disponibile per **macOS, Windows 10/11 (64 bit)** e **Linux Mint (64 bit)**. È 
 
 **Dati personali:** i pacchetti distribuiti includono un database iniziale privo di registrazioni, progetti, colleghi e allegati. Le registrazioni di ciascun utente rimangono nel database locale e non vengono trasmesse al repository.
 
+**Correzione Mint FIX1 (8 novembre 2026):** risolto il blocco al primo avvio su `slf4j-nop-2.0.17.jar`. Pacchetto Debian **3.11.3-2**; programma Java **3.11.3**. Gli installer Mac e Windows restano quelli della 3.11.3. [Istruzioni Mint e verifica](docs/NOTE_RELEASE_3.11.3_MINT_FIX1.md).
+
 ## Scarica e installa
 
 | Sistema | Prima installazione | Aggiornamento / alternativa |
 |---|---|---|
 | **macOS** | [Installazione vergine (.zip)](installers/macos/RegistroOre_3_11_3_MAC_VERGINE.zip) | [Aggiornamento con doppio clic (.zip)](installers/macos/RegistroOre_3_11_3_MAC_AGGIORNAMENTO.zip) |
 | **Windows 10/11 x64** | [Applicazione (.zip)](installers/windows/RegistroOre_3_11_3_Windows_x64.zip) | [Aggiornamento con backup](installers/windows/RegistroOre_3_11_3_Windows_AGGIORNAMENTO.zip) |
-| **Linux Mint x64** | [Pacchetto (.deb)](installers/linux/RegistroOre_3_11_3_LinuxMint_amd64.deb) | [Aggiornamento con backup](installers/linux/RegistroOre_3_11_3_LinuxMint_AGGIORNAMENTO.zip) · [Portatile](installers/linux/RegistroOre_3_11_3_LinuxMint_Portabile.zip) |
+| **Linux Mint x64** | [Pacchetto (.deb)](installers/linux/RegistroOre_3_11_3_LinuxMint_FIX1_amd64.deb) | [Aggiornamento con backup](installers/linux/RegistroOre_3_11_3_LinuxMint_FIX1_AGGIORNAMENTO.zip) · [Portatile](installers/linux/RegistroOre_3_11_3_LinuxMint_FIX1_Portabile.zip) |
 
 Le versioni distribuite sono disponibili anche nella **[sezione Releases](../../releases)**.
 
